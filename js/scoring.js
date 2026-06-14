@@ -74,5 +74,12 @@ const Scoring = (function () {
     return Array.from(graph[districtId] || []).filter(n => owned.has(n));
   }
 
-  return { buildGraph, teamScore, borderingOwned, areaById, nameById, allIds };
+  /* Split a district's neighbours into land (real) vs sea-crossing (enabled). */
+  function neighborsByType(districtId, graph) {
+    const land = new Set(D.adjacency[districtId] || []);
+    const all = Array.from((graph && graph[districtId]) || []);
+    return { land: all.filter(n => land.has(n)), sea: all.filter(n => !land.has(n)) };
+  }
+
+  return { buildGraph, teamScore, borderingOwned, neighborsByType, areaById, nameById, allIds };
 })();

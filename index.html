@@ -9,7 +9,7 @@
 <title>Jet Lag HK — District Claiming</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<link rel="stylesheet" href="css/styles.css?v=2" />
+<link rel="stylesheet" href="css/styles.css?v=3" />
 </head>
 <body>
 <div id="app">
@@ -23,82 +23,46 @@
       </div>
     </div>
     <nav class="tabs">
-      <button class="tab" data-tab="play">▶ Play</button>
+      <button class="tab" data-tab="game">🌍 Game</button>
+      <button class="tab" data-tab="team">👤 My Team</button>
       <button class="tab" data-tab="build">🛠 Build</button>
     </nav>
-    <button id="connBtn" class="conn-chip" title="Multi-device sync">
-      <span class="conn-dot" id="connDot"></span>
-      <span id="connLabel">Offline</span>
-    </button>
+    <button id="idChip" class="conn-chip id-chip" title="Log in / identity"><span class="conn-dot"></span><span>Spectator</span></button>
+    <button id="connBtn" class="conn-chip" title="Multi-device sync"><span class="conn-dot" id="connDot"></span><span id="connLabel">Offline</span></button>
   </header>
 
-  <!-- ============ PLAY ============ -->
-  <main id="tab-play" class="tab-panel">
+  <!-- ============ GAME (shared) ============ -->
+  <main id="tab-game" class="tab-panel">
     <div class="play-layout">
       <section class="map-wrap">
         <div id="map"></div>
         <div class="map-tools">
-          <div class="map-tool-row" id="claimAsRow"></div>
+          <div class="map-tool-row" id="actingRow"></div>
           <div class="map-mode" id="mapModeRow">
             <button class="mode-btn active" data-mode="claim">Claim</button>
-            <button class="mode-btn" data-mode="tower">Place Tower</button>
+            <button class="mode-btn" data-mode="info">Borders</button>
             <button class="mode-btn" data-mode="roadblock">Roadblock</button>
-            <button class="mode-btn" data-mode="info">Info</button>
           </div>
-          <div class="map-hint" id="mapHint">Tap a district to claim it for the selected team.</div>
+          <div class="map-hint" id="mapHint">Tap a district to claim it for your team.</div>
         </div>
       </section>
-
       <aside class="play-side">
         <div class="side-scroll">
-          <!-- Leaderboard -->
           <div class="card" id="leaderboardCard">
             <div class="card-h">🏆 Leaderboard <span class="card-h-note">largest connected land area</span></div>
             <div id="leaderboard"></div>
           </div>
-
-          <!-- Teams / coins -->
           <div class="card">
-            <div class="card-h">👥 Teams & Coins
-              <button class="mini-btn" id="addTeamBtn">+ Team</button>
-            </div>
-            <div id="teamsPanel"></div>
+            <div class="card-h">⏱ Active Roadblocks <span class="card-h-note" id="effCount"></span></div>
+            <div id="effectsPanel"><div class="empty">No active roadblocks.</div></div>
           </div>
-
-          <!-- Transport calculator -->
           <div class="card">
-            <div class="card-h">🚇 Transport Calculator</div>
-            <div id="transportCalc"></div>
+            <div class="card-h">🃏 Public Deck <span class="card-h-note" id="deckCount"></span></div>
+            <div id="deckTools"></div>
+            <div id="publicDeck"></div>
           </div>
-
-          <!-- Shops -->
           <div class="card">
-            <div class="card-h">🛒 Shops</div>
-            <div class="shop-tabs" id="shopTabs">
-              <button class="shop-tab active" data-shop="powerup">Powerups</button>
-              <button class="shop-tab" data-shop="tower">Towers</button>
-              <button class="shop-tab" data-shop="roadblock">Roadblocks</button>
-            </div>
-            <div id="shopBody"></div>
-          </div>
-
-          <!-- Active effects / timers -->
-          <div class="card">
-            <div class="card-h">⏱ Active Effects <span class="card-h-note" id="effCount"></span></div>
-            <div id="effectsPanel"><div class="empty">No active towers, roadblocks or timers.</div></div>
-          </div>
-
-          <!-- Steal -->
-          <div class="card">
-            <div class="card-h">⚔️ Steal a District</div>
-            <div id="stealPanel"></div>
-          </div>
-
-          <!-- Log -->
-          <div class="card">
-            <div class="card-h">📜 Activity Log
-              <button class="mini-btn ghost" id="clearLogBtn">clear</button>
-            </div>
+            <div class="card-h">📜 Activity Log</div>
             <div id="logPanel" class="log"></div>
           </div>
         </div>
@@ -106,7 +70,12 @@
     </div>
   </main>
 
-  <!-- ============ BUILD ============ -->
+  <!-- ============ MY TEAM (private) ============ -->
+  <main id="tab-team" class="tab-panel hidden">
+    <div class="team-layout"><div class="side-scroll" id="teamBody"></div></div>
+  </main>
+
+  <!-- ============ BUILD (host editor) ============ -->
   <main id="tab-build" class="tab-panel hidden">
     <div class="build-layout">
       <nav class="build-nav">
@@ -120,39 +89,30 @@
     </div>
   </main>
 
-  <!-- ============ CONNECT MODAL ============ -->
-  <div class="modal-back hidden" id="connModal">
-    <div class="modal">
-      <div class="modal-h">Multi-device sync <button class="x" data-close>×</button></div>
-      <div class="modal-body" id="connModalBody"></div>
-    </div>
-  </div>
-
-  <!-- generic modal -->
-  <div class="modal-back hidden" id="genModal">
-    <div class="modal">
-      <div class="modal-h"><span id="genTitle">…</span><button class="x" data-close>×</button></div>
-      <div class="modal-body" id="genBody"></div>
-    </div>
-  </div>
+  <!-- modals -->
+  <div class="modal-back hidden" id="connModal"><div class="modal">
+    <div class="modal-h">Log in / Identity<button class="x" data-close>×</button></div>
+    <div class="modal-body" id="connModalBody"></div></div></div>
+  <div class="modal-back hidden" id="genModal"><div class="modal">
+    <div class="modal-h"><span id="genTitle">…</span><button class="x" data-close>×</button></div>
+    <div class="modal-body" id="genBody"></div></div></div>
 
   <div id="toast" class="toast hidden"></div>
 </div>
 
-<!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<!-- Firebase (compat — global `firebase`, no build step) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
-<!-- App -->
 <script src="js/data.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/scoring.js"></script>
 <script src="js/map.js"></script>
-<script src="js/play.js"></script>
+<script src="js/game.js"></script>
+<script src="js/team.js"></script>
 <script src="js/build.js"></script>
 <script src="js/app.js"></script>
 </body>

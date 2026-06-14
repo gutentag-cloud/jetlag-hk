@@ -276,3 +276,41 @@ b{color:#fff}
   .tab{padding:7px 10px}
   .conn-chip span#connLabel{display:none}
 }
+
+/* ============ v2 LAYOUT: identity, My Team tab, public deck ============ */
+.id-chip{cursor:pointer}
+.id-chip .conn-dot{box-shadow:none}
+.host-acting{background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:4px 6px;font-size:12px;max-width:150px}
+.link-btn{background:none;border:none;color:var(--accent);text-decoration:underline;font-size:inherit;padding:0;cursor:pointer}
+.border-legend{display:flex;align-items:center;gap:6px}
+.host-banner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--line);
+  border-radius:9px;padding:8px 10px;margin-bottom:12px;font-size:13px}
+.host-banner.warn{border-color:#7c5e1e;background:#221c10;color:#f0d9a0}
+.host-banner .host-acting{margin:0}
+
+/* My Team tab */
+.team-layout{height:100%;display:flex;min-height:0}
+.team-layout .side-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;padding:12px}
+.team-wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:10px;width:100%}
+.team-wrap .card{width:100%}
+.team-wrap .card-h .team-name{flex:1;font-size:15px}
+.coin-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.coin-big{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.coin-big.neg{color:var(--bad)}
+.team-stats{margin-top:8px;font-size:12px;color:var(--muted)}
+.mini-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.mini-row:last-child{border-bottom:none}
+.btn.xs{padding:4px 8px;font-size:12px}
+
+/* public deck (Game tab) */
+.deck-tools{display:flex;gap:6px;margin-bottom:6px}
+.deck-tools .search{flex:1}
+#publicDeck{max-height:none}
+.deck-group{margin-bottom:10px}
+.deck-group-h{display:flex;align-items:center;gap:7px;font-size:13px;padding:6px 0;cursor:pointer}
+.deck-group-h .tiny{margin-left:auto}
+.deck-card{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px}
+.deck-card.done{border-color:var(--good)}
+.dc-top{display:flex;align-items:center;gap:6px;font-size:13px}
+.dc-done{margin-left:auto;font-size:10px;color:#06281a;padding:1px 6px;border-radius:5px;font-weight:700;white-space:nowrap}
+.dc-text{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}

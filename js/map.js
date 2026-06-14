@@ -84,9 +84,17 @@ const GameMap = (function () {
         style = { color: '#566', weight: 1.1, fillColor: GREY, fillOpacity: 0.32, dashArray: null };
       }
       if (steal) { style.dashArray = '6 5'; style.color = teamColor(ctx, steal.by); style.weight = 2.4; }
-      if (ctx.selectedDistrict === id) { style.weight = Math.max(style.weight, 3); style.color = '#fbbf24'; }
       layer.setStyle(style);
     });
+
+    // border inspector: highlight land (green) vs sea-crossing (cyan dashed) neighbours
+    if (ctx.showBordersFor && layersById[ctx.showBordersFor]) {
+      const { land, sea } = Scoring.neighborsByType(ctx.showBordersFor, ctx.graph);
+      land.forEach(n => { const l = layersById[n]; if (l) l.setStyle({ color: '#22c55e', weight: 3, dashArray: null }); });
+      sea.forEach(n => { const l = layersById[n]; if (l) l.setStyle({ color: '#22d3ee', weight: 3, dashArray: '5 5' }); });
+      const self = layersById[ctx.showBordersFor];
+      if (self) self.setStyle({ color: '#fbbf24', weight: 3.5, dashArray: null });
+    }
 
     rebuildLabels(ctx);
     rebuildMarkers(ctx);

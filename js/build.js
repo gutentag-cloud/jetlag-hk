@@ -25,11 +25,16 @@ const Build = (function () {
     C = ctx || C;
     const v = App.ui.buildView;
     const body = document.getElementById('buildBody');
-    if (v === 'challenges') body.innerHTML = renderChallenges();
-    else if (v === 'districts') body.innerHTML = renderDistricts();
-    else if (v === 'borders') body.innerHTML = renderBorders();
-    else if (v === 'rules') body.innerHTML = renderRules();
-    else if (v === 'data') { body.innerHTML = renderData(); wireData(); }
+    const banner = C.isHost ? '' :
+      `<div class="host-banner warn">🔒 Viewing as <b>${esc(Auth.label())}</b>. Editing the deck / borders is Host-only — <button class="link-btn" onclick="App.openLoginModal()">log in as Host</button>.</div>`;
+    let html = '';
+    if (v === 'challenges') html = renderChallenges();
+    else if (v === 'districts') html = renderDistricts();
+    else if (v === 'borders') html = renderBorders();
+    else if (v === 'rules') html = renderRules();
+    else if (v === 'data') html = renderData();
+    body.innerHTML = banner + html;
+    if (v === 'data') wireData();
   }
 
   /* ---------- challenge deck ---------- */
@@ -165,7 +170,6 @@ const Build = (function () {
   function renderRules() {
     const t = D.transport.map(m => `<tr><td>${esc(m.mode)}</td><td>${esc(m.desc)}</td></tr>`).join('');
     const pu = D.powerups.map(p => `<tr><td>[${p.id}]</td><td>${esc(p.name)}</td><td class="num">${esc(String(p.cost))}</td></tr>`).join('');
-    const tw = D.towers.map(t => `<div class="rcard"><b>[${t.id}] ${esc(t.name)} — radius ${t.radiusKm} km</b>${esc(t.effect)}</div>`).join('');
     const rb = D.roadblocks.map(r => `<tr><td>${esc(r.name)}</td><td class="num">${r.cost}</td></tr>`).join('');
     return `
       <h2>Rules Reference</h2>
@@ -178,7 +182,6 @@ const Build = (function () {
       <div class="rules-sec"><h3>✨ Powerup shop <span class="tiny">(districts 3–5, buy before rolling a challenge)</span></h3>
         <table class="rtable"><tr><th></th><th>Powerup</th><th class="num">Cost</th></tr>${pu}</table></div>
 
-      <div class="rules-sec"><h3>🗼 Towers <span class="tiny">(${D.towerCost} coins · max ${D.towerMaxMin} min · next after ${D.towerCooldownMin} min · drop at your location)</span></h3>${tw}</div>
 
       <div class="rules-sec"><h3>⛔ Roadblocks <span class="tiny">(${D.roadblockDiameterM} m · ${D.roadblockMin} min · next after ${D.roadblockCooldownMin} min · can't trap a player)</span></h3>
         <table class="rtable"><tr><th>Type</th><th class="num">Cost</th></tr>${rb}</table></div>
