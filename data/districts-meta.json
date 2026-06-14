@@ -1,0 +1,147 @@
+[
+ {
+  "id": "kowloon-southwest",
+  "name": "Kowloon Southwest (Yau Tsim Mong)",
+  "area_km2": 6.951
+ },
+ {
+  "id": "kowloon-southeast",
+  "name": "Kowloon Southeast (Hung Hom, To Kwa Wan)",
+  "area_km2": 6.091
+ },
+ {
+  "id": "kowloon-northeast",
+  "name": "Kowloon Northeast (Wong Tai Sin)",
+  "area_km2": 7.69
+ },
+ {
+  "id": "kwun-tong",
+  "name": "Kwun Tong",
+  "area_km2": 8.88
+ },
+ {
+  "id": "kowloon-northwest",
+  "name": "Kowloon Northwest (Sham Shui Po, Kowloon Tong)",
+  "area_km2": 11.448
+ },
+ {
+  "id": "kowloon-peak",
+  "name": "Kowloon Peak",
+  "area_km2": 28.569
+ },
+ {
+  "id": "hki-southwest",
+  "name": "HKI Southwest",
+  "area_km2": 29.265
+ },
+ {
+  "id": "hki-west",
+  "name": "HKI West",
+  "area_km2": 10.624
+ },
+ {
+  "id": "hki-central",
+  "name": "HKI Central",
+  "area_km2": 10.371
+ },
+ {
+  "id": "kowloon-bay",
+  "name": "Kowloon Bay",
+  "area_km2": 8.007
+ },
+ {
+  "id": "sha-tin",
+  "name": "Sha Tin",
+  "area_km2": 23.356
+ },
+ {
+  "id": "sai-kung",
+  "name": "Sai Kung",
+  "area_km2": 66.513
+ },
+ {
+  "id": "ma-on-shan",
+  "name": "Ma On Shan",
+  "area_km2": 29.843
+ },
+ {
+  "id": "sap-sze-heung-et-al",
+  "name": "Sap Sze Heung et al.",
+  "area_km2": 48.402
+ },
+ {
+  "id": "ma-liu-shui",
+  "name": "Ma Liu Shui",
+  "area_km2": 25.086
+ },
+ {
+  "id": "hki-southeast",
+  "name": "HKI Southeast",
+  "area_km2": 33.185
+ },
+ {
+  "id": "hki-east",
+  "name": "HKI East",
+  "area_km2": 10.539
+ },
+ {
+  "id": "tsuen-wan",
+  "name": "Tsuen Wan",
+  "area_km2": 30.276
+ },
+ {
+  "id": "kwai-tsing",
+  "name": "Kwai Tsing",
+  "area_km2": 25.692
+ },
+ {
+  "id": "sham-tseng-tai-tong",
+  "name": "Sham Tseng & Tai Tong",
+  "area_km2": 70.547
+ },
+ {
+  "id": "tuen-mun",
+  "name": "Tuen Mun",
+  "area_km2": 67.309
+ },
+ {
+  "id": "yuen-long-et-al",
+  "name": "Yuen Long et al.",
+  "area_km2": 69.703
+ },
+ {
+  "id": "far-north",
+  "name": "Far North",
+  "area_km2": 80.641
+ },
+ {
+  "id": "sheung-shui-et-al",
+  "name": "Sheung Shui et al.",
+  "area_km2": 52.157
+ },
+ {
+  "id": "tai-po",
+  "name": "Tai Po",
+  "area_km2": 26.931
+ },
+ {
+  "id": "sha-tau-kok-et-al",
+  "name": "Sha Tau Kok et al.",
+  "area_km2": 96.773
+ },
+ {
+  "id": "lantau-north",
+  "name": "Lantau North",
+  "area_km2": 81.883
+ },
+ {
+  "id": "lantau-south",
+  "name": "Lantau South",
+  "area_km2": 95.601
+ },
+ {
+  "id": "tseung-kwan-o",
+  "name": "Tseung Kwan O",
+  "area_km2": 24.238
+ }
+]

@@ -1,0 +1,166 @@
+{
+ "kowloon-southwest": [
+  "kowloon-northeast",
+  "kowloon-northwest",
+  "kowloon-southeast"
+ ],
+ "kowloon-southeast": [
+  "kowloon-bay",
+  "kowloon-northeast",
+  "kowloon-northwest",
+  "kowloon-southwest"
+ ],
+ "kowloon-northeast": [
+  "kowloon-bay",
+  "kowloon-northwest",
+  "kowloon-peak",
+  "kowloon-southeast",
+  "kowloon-southwest",
+  "sha-tin"
+ ],
+ "kwun-tong": [
+  "kowloon-bay",
+  "kowloon-peak",
+  "tseung-kwan-o"
+ ],
+ "kowloon-northwest": [
+  "kowloon-northeast",
+  "kowloon-southeast",
+  "kowloon-southwest",
+  "kwai-tsing",
+  "sha-tin"
+ ],
+ "kowloon-peak": [
+  "kowloon-bay",
+  "kowloon-northeast",
+  "kwun-tong",
+  "ma-on-shan",
+  "sai-kung",
+  "sha-tin",
+  "tseung-kwan-o"
+ ],
+ "hki-southwest": [
+  "hki-southeast",
+  "hki-west"
+ ],
+ "hki-west": [
+  "hki-central",
+  "hki-southeast",
+  "hki-southwest"
+ ],
+ "hki-central": [
+  "hki-east",
+  "hki-southeast",
+  "hki-west"
+ ],
+ "kowloon-bay": [
+  "kowloon-northeast",
+  "kowloon-peak",
+  "kowloon-southeast",
+  "kwun-tong"
+ ],
+ "sha-tin": [
+  "kowloon-northeast",
+  "kowloon-northwest",
+  "kowloon-peak",
+  "kwai-tsing",
+  "ma-liu-shui",
+  "ma-on-shan",
+  "tsuen-wan"
+ ],
+ "sai-kung": [
+  "kowloon-peak",
+  "ma-on-shan",
+  "sap-sze-heung-et-al"
+ ],
+ "ma-on-shan": [
+  "kowloon-peak",
+  "sai-kung",
+  "sap-sze-heung-et-al",
+  "sha-tin"
+ ],
+ "sap-sze-heung-et-al": [
+  "ma-on-shan",
+  "sai-kung"
+ ],
+ "ma-liu-shui": [
+  "sha-tin",
+  "tai-po",
+  "tsuen-wan",
+  "yuen-long-et-al"
+ ],
+ "hki-southeast": [
+  "hki-central",
+  "hki-east",
+  "hki-southwest",
+  "hki-west"
+ ],
+ "hki-east": [
+  "hki-central",
+  "hki-southeast"
+ ],
+ "tsuen-wan": [
+  "kwai-tsing",
+  "ma-liu-shui",
+  "sha-tin",
+  "sham-tseng-tai-tong",
+  "tai-po",
+  "yuen-long-et-al"
+ ],
+ "kwai-tsing": [
+  "kowloon-northwest",
+  "sha-tin",
+  "tsuen-wan"
+ ],
+ "sham-tseng-tai-tong": [
+  "tsuen-wan",
+  "tuen-mun",
+  "yuen-long-et-al"
+ ],
+ "tuen-mun": [
+  "far-north",
+  "sham-tseng-tai-tong",
+  "yuen-long-et-al"
+ ],
+ "yuen-long-et-al": [
+  "far-north",
+  "ma-liu-shui",
+  "sham-tseng-tai-tong",
+  "sheung-shui-et-al",
+  "tai-po",
+  "tsuen-wan",
+  "tuen-mun"
+ ],
+ "far-north": [
+  "sheung-shui-et-al",
+  "tuen-mun",
+  "yuen-long-et-al"
+ ],
+ "sheung-shui-et-al": [
+  "far-north",
+  "sha-tau-kok-et-al",
+  "tai-po",
+  "yuen-long-et-al"
+ ],
+ "tai-po": [
+  "ma-liu-shui",
+  "sha-tau-kok-et-al",
+  "sheung-shui-et-al",
+  "tsuen-wan",
+  "yuen-long-et-al"
+ ],
+ "sha-tau-kok-et-al": [
+  "sheung-shui-et-al",
+  "tai-po"
+ ],
+ "lantau-north": [
+  "lantau-south"
+ ],
+ "lantau-south": [
+  "lantau-north"
+ ],
+ "tseung-kwan-o": [
+  "kowloon-peak",
+  "kwun-tong"
+ ]
+}
