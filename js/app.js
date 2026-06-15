@@ -5,12 +5,14 @@
    ============================================================ */
 const App = (function () {
   const D = window.JETLAG_DATA;
-  const PALETTE = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6', '#f97316'];
+  // Jet Lag red / green / yellow team colours (+ a few extras for big games)
+  const PALETTE = ['#e63329', '#1faa59', '#f5c518', '#e67e22', '#2d9cdb', '#9b59b6'];
 
   let raw = {};
   let ctx = {};
   let typing = false, pendingRender = false;
   let pending = null;            // pending roadblock placement {team, payload}
+  let geoWatch = null;           // geolocation watch id
 
   const ui = {
     tab: 'game', buildView: 'challenges', mapMode: 'claim', shop: 'powerup',
@@ -22,6 +24,8 @@ const App = (function () {
   const now = () => Date.now();
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function fmtArea(km2) { return (km2 || 0).toFixed(1); }
+  function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+  function fmtCoins(n) { return round2(n).toFixed(2).replace(/\.?0+$/, ''); }
   function uid(p) { return p + now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
   function toast(msg, ms) {
     const t = document.getElementById('toast');
@@ -68,14 +72,15 @@ const App = (function () {
     Object.keys(teams).forEach(t => ownedByTeam[t] = []);
     Object.keys(claims).forEach(did => { const t = claims[did].team; (ownedByTeam[t] = ownedByTeam[t] || []).push(did); });
     const scores = {};
-    Object.keys(teams).forEach(t => scores[t] = Scoring.teamScore(ownedByTeam[t] || [], graph));
+    Object.keys(teams).forEach(t => scores[t] = Scoring.teamScore(ownedByTeam[t] || []));
 
     ctx = {
       teams, claims, steals: raw.steals || {}, coins: raw.coins || {}, effects: raw.effects || {},
       challengeDone: raw.challengeDone || {}, log: raw.log || {}, borders, graph, challenges,
+      locations: raw.locations || {}, meta: raw.meta || {},
       ownedByTeam, scores, showMarkers: true, ui,
       me: currentTeam(), role: Auth.role(), isHost: Auth.isHost(),
-      showBordersFor: ui.showBordersFor
+      sharingLoc: isSharingLoc(), showBordersFor: ui.showBordersFor
     };
   }
 
@@ -97,8 +102,9 @@ const App = (function () {
   /* teams */
   function createTeam(name, color, pin) {
     const id = uid('t');
-    Sync.update('teams/' + id, { id, name: name || ('Team ' + (Object.keys(raw.teams || {}).length + 1)), color: color || PALETTE[Object.keys(raw.teams || {}).length % PALETTE.length], pin: String(pin || '') });
+    Sync.update('teams/' + id, { id, name: name || ('Team ' + (Object.keys(raw.teams || {}).length + 1)), color: color || PALETTE[Object.keys(raw.teams || {}).length % PALETTE.length], pin: String(pin || ''), incomeEpoch: 0 });
     Sync.write('coins/' + id, D.startingBudget);
+    if (!(raw.meta || {}).incomeStartedAt) Sync.write('meta/incomeStartedAt', now());   // start the coin clock
     log((name || 'A team') + ' joined (start ' + D.startingBudget + ' coins).');
     return id;
   }
@@ -120,16 +126,17 @@ const App = (function () {
   }
   function setHostActing(id) { ui.hostActing = id; render(); }
 
-  /* claims */
-  function claimDistrict(did, teamId, challengeId) {
+  /* claims — Flop version.
+     normal challenge → claim (stealable).  hard challenge → claim & LOCK (permanent),
+     or STEAL an opponent's district if you own a bordering one (land/sea). */
+  function claimDistrict(did, teamId, challengeId, locked) {
     if (!teamId) { toast('🔒 Log in as a team (top-right) to claim.'); return; }
     if (!requireActAs(teamId)) return;
-    Sync.write('claims/' + did, { team: teamId, via: challengeId || null, at: now() });
+    Sync.write('claims/' + did, { team: teamId, via: challengeId || null, at: now(), locked: !!locked });
     if (challengeId) Sync.write('challengeDone/' + challengeId, teamId);
-    if ((raw.steals || {})[did]) Sync.remove('steals/' + did);
     const tn = (raw.teams[teamId] || {}).name || 'Team';
-    log(tn + ' claimed ' + Scoring.nameById[did] + (challengeId ? ' (challenge done)' : '') + '.');
-    toast(tn + ' claimed ' + Scoring.nameById[did]);
+    log(tn + ' claimed ' + Scoring.nameById[did] + (locked ? ' 🔒 (hard challenge)' : '') + '.');
+    toast(tn + ' claimed ' + Scoring.nameById[did] + (locked ? ' 🔒' : ''));
   }
   function unclaim(did) {
     const c = (raw.claims || {})[did]; if (!c) return;
@@ -137,31 +144,111 @@ const App = (function () {
     Sync.remove('claims/' + did);
     log((raw.teams[c.team] || {}).name + ' released ' + Scoring.nameById[did] + '.');
   }
-  function claimViaChallenge(challengeId) {
+  function lockDistrict(did, challengeId) {
+    const c = (raw.claims || {})[did]; if (!c) return;
+    if (!requireActAs(c.team)) return;
+    Sync.write('claims/' + did + '/locked', true);
+    if (challengeId) Sync.write('challengeDone/' + challengeId, c.team);
+    log((raw.teams[c.team] || {}).name + ' locked ' + Scoring.nameById[did] + ' 🔒 (hard challenge).');
+    toast('Locked ' + Scoring.nameById[did] + ' — permanent.');
+  }
+  // unified completion of a normal/hard challenge tied to a district
+  function completeChallenge(challengeId) {
     const ch = ctx.challenges.find(c => c.id === challengeId); if (!ch) return;
-    const steal = (raw.steals || {})[ch.districtId];
-    if (steal) { completeSteal(ch.districtId, challengeId); return; }
-    claimDistrict(ch.districtId, currentTeam(), challengeId);
+    const did = ch.districtId;
+    if (!did) { toast('This card is handled in The Flop (coming soon).'); return; }
+    const me = currentTeam();
+    if (!me) { toast('🔒 Log in as a team first.'); return; }
+    if (!requireActAs(me)) return;
+    const claim = (raw.claims || {})[did];
+    const isHard = ch.type === 'hard';
+    if (!claim) {                                   // unclaimed → claim (hard locks)
+      claimDistrict(did, me, challengeId, isHard);
+    } else if (claim.team === me) {                 // own it
+      if (isHard) lockDistrict(did, challengeId);
+      else toast('You already own ' + Scoring.nameById[did] + '.');
+    } else {                                        // opponent owns it → steal attempt
+      if (claim.locked) { toast('🔒 ' + Scoring.nameById[did] + ' is locked — cannot be stolen.'); return; }
+      if (!isHard) { toast('To steal, you must complete this district’s HARD challenge.'); return; }
+      const borders = Scoring.borderingOwned(did, ctx.ownedByTeam[me] || [], ctx.graph);
+      if (!borders.length) { toast('You must own a district bordering ' + Scoring.nameById[did] + ' (land or sea) to steal it.'); return; }
+      Sync.write('claims/' + did, { team: me, via: challengeId, at: now(), locked: true });
+      Sync.write('challengeDone/' + challengeId, me);
+      log((raw.teams[me] || {}).name + ' STOLE ' + Scoring.nameById[did] + ' 🔒 (hard challenge).');
+      toast('Stolen: ' + Scoring.nameById[did] + ' 🔒');
+    }
     closePopups();
   }
 
-  /* coins */
-  function setCoins(teamId, val) { if (requireActAs(teamId)) Sync.write('coins/' + teamId, Math.round(val)); }
+  /* coins (decimals allowed) */
+  function setCoins(teamId, val) { if (requireActAs(teamId)) Sync.write('coins/' + teamId, round2(val)); }
   function adjustCoins(teamId, delta, reason, silent) {
     if (!silent && !requireActAs(teamId)) return;
     const cur = (raw.coins || {})[teamId] || 0;
-    Sync.write('coins/' + teamId, Math.round(cur + delta));
-    if (reason) log((raw.teams[teamId] || {}).name + ': ' + (delta >= 0 ? '+' : '') + delta + ' coins — ' + reason + '.');
+    Sync.write('coins/' + teamId, round2(cur + delta));
+    if (reason) log((raw.teams[teamId] || {}).name + ': ' + (delta >= 0 ? '+' : '') + fmtCoins(delta) + ' coins — ' + reason + '.');
   }
   function canAfford(teamId, cost) { return ((raw.coins || {})[teamId] || 0) >= cost; }
+
+  /* passive income: +incomeAmount every incomeIntervalMin. Host's device credits
+     it (and any backlog) so it survives reloads without double-paying. */
+  function incomeIntervalMs() { return D.incomeIntervalMin * 60000; }
+  function nextIncome() {
+    const start = (raw.meta || {}).incomeStartedAt; if (!start) return null;
+    const iv = incomeIntervalMs(), due = Math.floor((now() - start) / iv);
+    return { msLeft: (start + (due + 1) * iv) - now(), due, amount: D.incomeAmount };
+  }
+  function tickIncome() {
+    if (!Auth.isHost()) return;
+    const start = (raw.meta || {}).incomeStartedAt; if (!start) return;
+    const due = Math.floor((now() - start) / incomeIntervalMs());
+    if (due <= 0) return;
+    Object.keys(raw.teams || {}).forEach(tid => {
+      const ep = (raw.teams[tid] || {}).incomeEpoch || 0;
+      if (due > ep) {
+        const add = (due - ep) * D.incomeAmount;
+        Sync.write('coins/' + tid, round2(((raw.coins || {})[tid] || 0) + add));
+        Sync.write('teams/' + tid + '/incomeEpoch', due);
+        log((raw.teams[tid] || {}).name + ': +' + add + ' coins (income).');
+      }
+    });
+  }
+  function resetIncomeClock() {
+    if (!requireHost()) return;
+    Sync.write('meta/incomeStartedAt', now());
+    Object.keys(raw.teams || {}).forEach(tid => Sync.write('teams/' + tid + '/incomeEpoch', 0));
+    toast('Coin clock reset — next payout in ' + D.incomeIntervalMin + ' min.');
+  }
+
+  /* live location sharing (opt-in, per device) */
+  function isSharingLoc() { return localStorage.getItem('jetlag.shareLoc') === '1'; }
+  function toggleLocation() { isSharingLoc() ? stopLocation() : startLocation(); }
+  function startLocation() {
+    const me = currentTeam();
+    if (!me) { toast('🔒 Log in as a team first.'); return; }
+    if (!navigator.geolocation) { toast('Geolocation not supported on this device.'); return; }
+    localStorage.setItem('jetlag.shareLoc', '1');
+    if (geoWatch != null) navigator.geolocation.clearWatch(geoWatch);
+    geoWatch = navigator.geolocation.watchPosition(
+      pos => { const t = currentTeam(); if (t) Sync.write('locations/' + t, { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 0), at: now() }); },
+      err => { toast('Location: ' + err.message); if (err.code === 1) stopLocation(); },
+      { enableHighAccuracy: true, maximumAge: 8000, timeout: 25000 });
+    toast('📍 Sharing your live location.'); render();
+  }
+  function stopLocation() {
+    localStorage.removeItem('jetlag.shareLoc');
+    if (geoWatch != null && navigator.geolocation) { navigator.geolocation.clearWatch(geoWatch); geoWatch = null; }
+    const me = currentTeam(); if (me) Sync.remove('locations/' + me);
+    toast('Location sharing off.'); render();
+  }
 
   /* transport */
   function transportCost() {
     const t = D.transport[ui.transport.mode] || D.transport[0];
-    if (t.rule === 'map') { const n = Number(ui.transport.mtr) || 0; return { cost: n * 2, label: t.mode }; }
+    if (t.rule === 'map') { const n = Number(ui.transport.mtr) || 0; return { cost: round2(n * (t.mult || 2)), label: t.mode, rate: t.desc }; }
     const mins = Number(ui.transport.minutes) || 0;
     const cost = t.rule === 'per2min' ? t.rate * mins / 2 : t.rate * mins;
-    return { cost: Math.round(cost), label: t.mode };
+    return { cost: round2(cost), label: t.mode, rate: t.desc };
   }
   function chargeTransport() {
     const team = currentTeam();
@@ -214,42 +301,16 @@ const App = (function () {
     return m + ':' + String(s % 60).padStart(2, '0') + ' left';
   }
 
-  /* steal */
+  /* steal (Flop version): need a bordering district (land/sea) + complete the
+     target's HARD challenge. No coin cost. Returns the hard challenge to do. */
   function stealInfo(did, teamId) {
     const owner = (raw.claims || {})[did];
-    if (!owner || !teamId || owner.team === teamId)
-      return { ok: false, reason: owner ? (owner.team === teamId ? 'You already own it.' : '') : 'Unclaimed — just claim it.' };
+    if (!owner || !teamId || owner.team === teamId) return { ok: false };
+    if (owner.locked) return { ok: false, locked: true, reason: 'Locked — already secured via a hard challenge.' };
     const borders = Scoring.borderingOwned(did, ctx.ownedByTeam[teamId] || [], ctx.graph);
-    if (!borders.length) return { ok: false, reason: 'You own no district bordering this one.', borders: [] };
-    const n = Math.min(borders.length, 3);
-    return { ok: true, borders, cost: D.steal[String(n)], n, owner: owner.team };
-  }
-  function startSteal(did, teamId) {
-    if (!requireActAs(teamId)) return;
-    const info = stealInfo(did, teamId);
-    if (!info.ok) { toast(info.reason || 'Cannot steal.'); return; }
-    if (!canAfford(teamId, info.cost)) { toast('Need ' + info.cost + ' coins to initiate.'); return; }
-    adjustCoins(teamId, -info.cost, 'steal initiation on ' + Scoring.nameById[did], true);
-    Sync.write('steals/' + did, { by: teamId, startedAt: now(), paid: info.cost });
-    log((raw.teams[teamId] || {}).name + ' is stealing ' + Scoring.nameById[did] + ' (-' + info.cost + ').');
-    toast('Steal started — complete a DIFFERENT location in ' + Scoring.nameById[did] + '.', 4000);
-  }
-  function completeSteal(did, challengeId) {
-    const steal = (raw.steals || {})[did]; if (!steal) { claimDistrict(did, currentTeam(), challengeId); return; }
-    if (!requireActAs(steal.by)) return;
-    const cur = (raw.claims || {})[did];
-    if (cur && cur.via && cur.via === challengeId) { toast('Must use a DIFFERENT location than the current claim.'); return; }
-    Sync.write('claims/' + did, { team: steal.by, via: challengeId || null, at: now() });
-    if (challengeId) Sync.write('challengeDone/' + challengeId, steal.by);
-    Sync.remove('steals/' + did);
-    log((raw.teams[steal.by] || {}).name + ' STOLE ' + Scoring.nameById[did] + '!');
-    toast('Stolen: ' + Scoring.nameById[did]); closePopups();
-  }
-  function cancelSteal(did, defended) {
-    const owner = (raw.claims || {})[did];
-    if (owner && !Auth.canActAs(owner.team)) { toast('🔒 Only the owner or Host can lock this.'); return; }
-    Sync.remove('steals/' + did);
-    log(defended ? (Scoring.nameById[did] + ' was defended & locked.') : ('Steal on ' + Scoring.nameById[did] + ' cancelled.'));
+    const hard = ctx.challenges.find(c => c.districtId === did && c.type === 'hard');
+    return { ok: borders.length > 0, borders, hard, owner: owner.team,
+             reason: borders.length ? '' : 'Need a district bordering this one (land or sea).' };
   }
 
   /* deck / borders (host) */
@@ -258,13 +319,13 @@ const App = (function () {
     const base = D.challenges.find(c => c.id === id);
     const merged = Object.assign({}, base, (raw.challenges || {})[id] || {});
     merged[field] = value;
-    Sync.write('challenges/' + id, { name: merged.name, text: merged.text, districtId: merged.districtId,
+    Sync.write('challenges/' + id, { name: merged.name, text: merged.text, districtId: merged.districtId, type: merged.type || 'normal',
       lat: merged.lat == null ? null : merged.lat, lon: merged.lon == null ? null : merged.lon, source: merged.source || 'custom' });
   }
   function addChallenge(districtId) {
     if (!requireHost()) return;
     const id = uid('cc');
-    Sync.write('challenges/' + id, { name: 'New challenge', text: '', districtId: districtId || Scoring.allIds[0], lat: null, lon: null, source: 'custom' });
+    Sync.write('challenges/' + id, { name: 'New challenge', text: '', districtId: districtId || Scoring.allIds[0], type: 'normal', lat: null, lon: null, source: 'custom' });
     toast('Challenge added.');
   }
   function deleteChallenge(id) { if (!requireHost()) return; Sync.write('deletedChallenges/' + id, true); Sync.remove('challenges/' + id); }
@@ -315,7 +376,7 @@ const App = (function () {
     const c = (raw.claims || {})[id];
     const me = currentTeam();
     if (c && c.team === me) { unclaim(id); return; }
-    if (c && c.team !== me) { openDistrictInfo(id); toast(Scoring.nameById[id] + ' is owned by ' + ((raw.teams[c.team] || {}).name || 'another team') + ' — use Steal in My Team.'); return; }
+    if (c && c.team !== me) { openDistrictInfo(id); return; }
     claimDistrict(id, me, null);
   }
   function handleMapTap(latlng) { if (ui.mapMode === 'roadblock' && pending) placePending(latlng); }
@@ -324,22 +385,30 @@ const App = (function () {
     ui.showBordersFor = id;
     const chs = ctx.challenges.filter(c => c.districtId === id);
     const claim = (raw.claims || {})[id];
-    const steal = (raw.steals || {})[id];
-    const owner = claim ? (raw.teams[claim.team] || {}).name : 'Unclaimed';
+    const me = currentTeam();
+    const owner = claim ? ((raw.teams[claim.team] || {}).name + (claim.locked ? ' 🔒' : '')) : 'Unclaimed';
     const { land, sea } = Scoring.neighborsByType(id, ctx.graph);
     const nm = d => esc(Scoring.nameById[d]);
-    let html = `<div class="popup-meta">${esc(owner)} · ${fmtArea(Scoring.areaById[id])} km²${steal ? ' · ⚔️ steal in progress' : ''}</div>`;
+    const si = stealInfo(id, me);
+    let html = `<div class="popup-meta">${esc(owner)} · ${fmtArea(Scoring.areaById[id])} km²</div>`;
     html += `<div style="margin-top:6px"><b>Borders</b></div>`;
     html += `<div style="font-size:12px"><span style="color:#22c55e">🟢 Land:</span> ${land.length ? land.map(nm).join(', ') : '—'}</div>`;
     html += `<div style="font-size:12px"><span style="color:#22d3ee">🩵 Sea:</span> ${sea.length ? sea.map(nm).join(', ') : '—'}</div>`;
-    html += `<div style="margin-top:6px;font-weight:600">Locations (${chs.length})</div>`;
+    if (claim && claim.team !== me && me) {
+      html += si.ok
+        ? `<div class="popup-meta" style="margin-top:5px;color:#f5c518">⚔️ Stealable — complete the HARD challenge below.</div>`
+        : `<div class="popup-meta" style="margin-top:5px">${si.locked ? '🔒 Locked — cannot be stolen.' : '⚔️ To steal: ' + esc(si.reason || '')}</div>`;
+    }
+    html += `<div style="margin-top:6px;font-weight:600">Challenges (${chs.length})</div>`;
     if (!chs.length) html += `<div class="popup-meta">No challenges yet.</div>`;
     chs.forEach(ch => {
       const done = (raw.challengeDone || {})[ch.id];
-      const blocked = steal && claim && claim.via === ch.id;
-      html += `<div style="margin-top:6px;border-top:1px solid #2a3040;padding-top:6px"><b>${esc(ch.name)}</b>${done ? ' ✅' : ''}<br>
+      const hard = ch.type === 'hard';
+      const dt = done ? (raw.teams[done] || {}) : null;
+      html += `<div class="popup-ch ${hard ? 'hard' : ''}">
+        <b>${hard ? '🟧 ' : ''}${esc(ch.name)}</b>${dt ? ` <span class="popup-done" style="background:${esc(dt.color || '#22c55e')}">✓ ${esc(dt.name)}</span>` : ''}<br>
         <span style="font-size:12px;color:#9aa7b4">${esc(ch.text || '—')}</span><br>
-        <button class="popup-btn" ${blocked ? 'disabled' : ''} onclick="App.claimViaChallenge('${ch.id}')">${steal ? 'Steal' : 'Claim'} via this${blocked ? ' (used by owner)' : ''}</button></div>`;
+        <button class="popup-btn" onclick="App.completeChallenge('${ch.id}')">Complete${hard ? ' (hard)' : ''}</button></div>`;
     });
     GameMap.flyTo(id); GameMap.popupAtDistrict(id, html); render();
   }
@@ -367,7 +436,8 @@ const App = (function () {
     GameMap.init(); Game.init(); Team.init(); Build.init(); wireChrome();
     Auth.init(() => render());
     Sync.init({ onState, onStatus: updateConn });
-    setInterval(() => { if (ui.tab === 'game') Game.tick(ctx); if (ui.tab === 'team') Team.tick(ctx); }, 1000);
+    setInterval(() => { tickIncome(); if (ui.tab === 'game') Game.tick(ctx); if (ui.tab === 'team') Team.tick(ctx); }, 1000);
+    if (isSharingLoc()) setTimeout(startLocation, 1500);   // resume location sharing
   }
   function updateConn(s) {
     const dot = document.getElementById('connDot'); const label = document.getElementById('connLabel');
@@ -455,13 +525,15 @@ const App = (function () {
   function parseConfig(txt) { const m = txt.match(/\{[\s\S]*\}/); if (m) txt = m[0]; try { return JSON.parse(txt); } catch (e) { return JSON.parse(txt.replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}')); } }
 
   return {
-    boot, render, esc, fmtArea, toast, ctx: () => ctx, ui, D, now, PALETTE,
+    boot, render, esc, fmtArea, fmtCoins, round2, toast, ctx: () => ctx, ui, D, now, PALETTE,
     currentTeam, switchTab, openLoginModal, clearBorders, openDistrictInfo,
     createTeam, addTeamHost, renameTeam, setTeamColor, removeTeam, setHostActing,
-    claimDistrict, unclaim, claimViaChallenge,
+    claimDistrict, unclaim, lockDistrict, completeChallenge,
     setCoins, adjustCoins, canAfford, transportCost, chargeTransport,
+    nextIncome, resetIncomeClock,
+    toggleLocation, isSharingLoc, startLocation, stopLocation,
     buyPowerup, buyRoadblock, removeEffect, effectRemaining,
-    stealInfo, startSteal, completeSteal, cancelSteal,
+    stealInfo,
     editChallenge, addChallenge, deleteChallenge, toggleChallengeDone, setBorder,
     handleDistrictTap, handleMapTap, setMapMode, genModal, resetGame, resetDeck,
     exportDeck, exportGame, importDeck

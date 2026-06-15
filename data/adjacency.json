@@ -1,14 +1,19 @@
 {
  "kowloon-southwest": [
+  "hki-central",
+  "hki-west",
   "kowloon-northeast",
   "kowloon-northwest",
   "kowloon-southeast"
  ],
  "kowloon-southeast": [
+  "hki-central",
+  "hki-west",
   "kowloon-bay",
   "kowloon-northeast",
   "kowloon-northwest",
-  "kowloon-southwest"
+  "kowloon-southwest",
+  "kwun-tong"
  ],
  "kowloon-northeast": [
   "kowloon-bay",
@@ -19,8 +24,11 @@
   "sha-tin"
  ],
  "kwun-tong": [
+  "hki-central",
+  "hki-east",
   "kowloon-bay",
   "kowloon-peak",
+  "kowloon-southeast",
   "tseung-kwan-o"
  ],
  "kowloon-northwest": [
@@ -41,17 +49,23 @@
  ],
  "hki-southwest": [
   "hki-southeast",
-  "hki-west"
+  "hki-west",
+  "lantau-south"
  ],
  "hki-west": [
   "hki-central",
   "hki-southeast",
-  "hki-southwest"
+  "hki-southwest",
+  "kowloon-southeast",
+  "kowloon-southwest"
  ],
  "hki-central": [
   "hki-east",
   "hki-southeast",
-  "hki-west"
+  "hki-west",
+  "kowloon-southeast",
+  "kowloon-southwest",
+  "kwun-tong"
  ],
  "kowloon-bay": [
   "kowloon-northeast",
@@ -75,15 +89,19 @@
  ],
  "ma-on-shan": [
   "kowloon-peak",
+  "ma-liu-shui",
   "sai-kung",
   "sap-sze-heung-et-al",
   "sha-tin"
  ],
  "sap-sze-heung-et-al": [
   "ma-on-shan",
-  "sai-kung"
+  "sai-kung",
+  "sha-tau-kok-et-al",
+  "tai-po"
  ],
  "ma-liu-shui": [
+  "ma-on-shan",
   "sha-tin",
   "tai-po",
   "tsuen-wan",
@@ -97,7 +115,8 @@
  ],
  "hki-east": [
   "hki-central",
-  "hki-southeast"
+  "hki-southeast",
+  "kwun-tong"
  ],
  "tsuen-wan": [
   "kwai-tsing",
@@ -109,16 +128,22 @@
  ],
  "kwai-tsing": [
   "kowloon-northwest",
+  "lantau-south",
   "sha-tin",
+  "sham-tseng-tai-tong",
   "tsuen-wan"
  ],
  "sham-tseng-tai-tong": [
+  "kwai-tsing",
+  "lantau-north",
+  "lantau-south",
   "tsuen-wan",
   "tuen-mun",
   "yuen-long-et-al"
  ],
  "tuen-mun": [
   "far-north",
+  "lantau-north",
   "sham-tseng-tai-tong",
   "yuen-long-et-al"
  ],
@@ -144,20 +169,27 @@
  ],
  "tai-po": [
   "ma-liu-shui",
+  "sap-sze-heung-et-al",
   "sha-tau-kok-et-al",
   "sheung-shui-et-al",
   "tsuen-wan",
   "yuen-long-et-al"
  ],
  "sha-tau-kok-et-al": [
+  "sap-sze-heung-et-al",
   "sheung-shui-et-al",
   "tai-po"
  ],
  "lantau-north": [
-  "lantau-south"
+  "lantau-south",
+  "sham-tseng-tai-tong",
+  "tuen-mun"
  ],
  "lantau-south": [
-  "lantau-north"
+  "hki-southwest",
+  "kwai-tsing",
+  "lantau-north",
+  "sham-tseng-tai-tong"
  ],
  "tseung-kwan-o": [
   "kowloon-peak",

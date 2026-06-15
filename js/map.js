@@ -5,7 +5,7 @@
    ============================================================ */
 const GameMap = (function () {
   const D = window.JETLAG_DATA;
-  let map, geoLayer, labelLayer, markerLayer, effectLayer;
+  let map, geoLayer, labelLayer, markerLayer, effectLayer, locationLayer;
   const layersById = {};
   let labelsVisible = false;
   let lastCtx = null;
@@ -36,6 +36,7 @@ const GameMap = (function () {
     labelLayer = L.layerGroup();
     markerLayer = L.layerGroup().addTo(map);
     effectLayer = L.layerGroup().addTo(map);
+    locationLayer = L.layerGroup().addTo(map);
 
     map.on('click', (e) => App.handleMapTap(e.latlng));
     map.on('zoomend', refreshLabels);
@@ -61,29 +62,19 @@ const GameMap = (function () {
     lastCtx = ctx;
     if (!map) return;
     const claims = ctx.claims || {};
-    const steals = ctx.steals || {};
-    // best-component set per team for highlight
-    const inBest = {};
-    Object.keys(ctx.scores || {}).forEach(tid => {
-      (ctx.scores[tid].bestComponent || []).forEach(d => inBest[d] = tid);
-    });
-
     D.districts.features.forEach(f => {
       const id = f.properties.id;
       const layer = layersById[id];
       if (!layer) return;
       const claim = claims[id];
-      const steal = steals[id];
       let style;
       if (claim) {
         const col = teamColor(ctx, claim.team);
-        const best = inBest[id] === claim.team;
-        style = { color: best ? '#fff' : col, weight: best ? 2.6 : 1.4,
-                  fillColor: col, fillOpacity: best ? 0.62 : 0.42, dashArray: null };
+        style = { color: claim.locked ? '#ffffff' : col, weight: claim.locked ? 2.4 : 1.4,
+                  fillColor: col, fillOpacity: claim.locked ? 0.6 : 0.42, dashArray: null };
       } else {
         style = { color: '#566', weight: 1.1, fillColor: GREY, fillOpacity: 0.32, dashArray: null };
       }
-      if (steal) { style.dashArray = '6 5'; style.color = teamColor(ctx, steal.by); style.weight = 2.4; }
       layer.setStyle(style);
     });
 
@@ -99,6 +90,23 @@ const GameMap = (function () {
     rebuildLabels(ctx);
     rebuildMarkers(ctx);
     rebuildEffects(ctx);
+    rebuildLocations(ctx);
+  }
+
+  function rebuildLocations(ctx) {
+    locationLayer.clearLayers();
+    const locs = ctx.locations || {};
+    Object.keys(locs).forEach(tid => {
+      const l = locs[tid]; if (!l || l.lat == null || l.lon == null) return;
+      const t = ctx.teams[tid] || {}; const col = t.color || '#fff';
+      const ageS = Math.max(0, Math.round((Date.now() - (l.at || 0)) / 1000));
+      const age = ageS < 60 ? ageS + 's ago' : Math.round(ageS / 60) + 'm ago';
+      const ini = esc((t.name || '?').trim().slice(0, 2).toUpperCase());
+      const m = L.marker([l.lat, l.lon], { icon: L.divIcon({ className: 'team-loc-wrap',
+        html: `<div class="team-loc" style="background:${col}">${ini}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: 1000 });
+      m.bindPopup(`<div class="popup-title">📍 ${esc(t.name || 'Team')}</div><div class="popup-meta">${age} · ±${l.acc || '?'}m</div>`);
+      m.addTo(locationLayer);
+    });
   }
 
   function rebuildLabels(ctx) {
@@ -130,11 +138,12 @@ const GameMap = (function () {
       m.on('click', (e) => {
         L.DomEvent.stop(e);
         const dname = Scoring.nameById[ch.districtId] || ch.districtId;
-        const html = `<div class="popup-title">${esc(ch.name)}</div>` +
-          `<div class="popup-meta">${esc(dname)}${done ? ' · ✅ done' : ''}</div>` +
+        const hard = ch.type === 'hard';
+        const html = `<div class="popup-title">${hard ? '🟧 ' : ''}${esc(ch.name)}</div>` +
+          `<div class="popup-meta">${esc(dname)}${hard ? ' · HARD' : ''}${done ? ' · ✅ done' : ''}</div>` +
           `<div style="margin-top:6px">${esc(ch.text || 'No challenge text yet — add it in Build.')}</div>` +
-          `<button class="popup-btn" onclick="App.claimViaChallenge('${ch.id}')">Claim ${esc(dname)} via this</button>`;
-        L.popup({ maxWidth: 260 }).setLatLng(e.latlng).setContent(html).openOn(map);
+          `<button class="popup-btn" onclick="App.completeChallenge('${ch.id}')">Complete${hard ? ' (hard)' : ''}</button>`;
+        L.popup({ maxWidth: 280 }).setLatLng(e.latlng).setContent(html).openOn(map);
       });
       m.addTo(markerLayer);
     });

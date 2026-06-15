@@ -43,29 +43,11 @@ const Scoring = (function () {
     return g;
   }
 
-  /* Connected components of a team's claimed districts. */
-  function teamScore(districtIds, graph) {
-    const set = new Set(districtIds);
-    const seen = new Set();
-    const comps = [];
-    districtIds.forEach(id => {
-      if (seen.has(id)) return;
-      const stack = [id], comp = [];
-      seen.add(id);
-      while (stack.length) {
-        const cur = stack.pop(); comp.push(cur);
-        (graph[cur] ? Array.from(graph[cur]) : []).forEach(n => {
-          if (set.has(n) && !seen.has(n)) { seen.add(n); stack.push(n); }
-        });
-      }
-      const area = comp.reduce((s, d) => s + (areaById[d] || 0), 0);
-      comps.push({ districts: comp, area });
-    });
-    comps.sort((a, b) => b.area - a.area);
-    const best = comps[0] || { districts: [], area: 0 };
+  /* Flop-version score: WIN = most districts; tiebreak = total land area.
+     (Connectedness is no longer part of scoring — only of steal eligibility.) */
+  function teamScore(districtIds) {
     const total = districtIds.reduce((s, d) => s + (areaById[d] || 0), 0);
-    return { bestArea: best.area, bestComponent: best.districts, totalArea: total,
-             components: comps, count: districtIds.length };
+    return { count: districtIds.length, totalArea: total, districts: districtIds.slice() };
   }
 
   /* Owned neighbours of a district (for steal cost = #bordering owned). */

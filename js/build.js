@@ -66,13 +66,20 @@ const Build = (function () {
     const cards = list.map(c => {
       const onMap = c.lat != null && c.lon != null;
       const done = (C.challengeDone || {})[c.id];
-      return `<div class="ch-card ${done ? 'done' : ''}">
+      const special = c.type === 'rare' || c.type === 'wildcard';
+      return `<div class="ch-card ${done ? 'done' : ''} ${c.type === 'hard' ? 'hard' : ''}">
         <div class="ch-top">
           <input class="ch-name" style="flex:1;background:transparent;border:none;color:#fff;font-weight:600;font-size:14px"
                  value="${esc(c.name)}" onchange="App.editChallenge('${c.id}','name',this.value)" />
           <span class="ch-badge ${onMap ? 'map' : ''}">${onMap ? '📍 map' : (c.source || 'card')}</span>
         </div>
-        <div class="ch-district">📌
+        <div class="ch-district">
+          ${special ? `🏷 <b style="text-transform:capitalize">${esc(c.type)}</b>` :
+            `🏷 <select onchange="App.editChallenge('${c.id}','type',this.value)">
+              <option value="normal" ${c.type !== 'hard' ? 'selected' : ''}>Normal</option>
+              <option value="hard" ${c.type === 'hard' ? 'selected' : ''}>Hard 🟧</option>
+            </select>`}
+          &nbsp;📌
           <select onchange="App.editChallenge('${c.id}','districtId',this.value)">${districtOptions(c.districtId)}</select>
         </div>
         <textarea class="ch-text" placeholder="Describe the challenge…"
@@ -166,35 +173,34 @@ const Build = (function () {
     App.setBorder(a, b, true); App.toast('Connected ' + Scoring.nameById[a] + ' ↔ ' + Scoring.nameById[b]);
   }
 
-  /* ---------- rules reference ---------- */
+  /* ---------- rules reference (Flop version) ---------- */
   function renderRules() {
     const t = D.transport.map(m => `<tr><td>${esc(m.mode)}</td><td>${esc(m.desc)}</td></tr>`).join('');
-    const pu = D.powerups.map(p => `<tr><td>[${p.id}]</td><td>${esc(p.name)}</td><td class="num">${esc(String(p.cost))}</td></tr>`).join('');
-    const rb = D.roadblocks.map(r => `<tr><td>${esc(r.name)}</td><td class="num">${r.cost}</td></tr>`).join('');
     return `
-      <h2>Rules Reference</h2>
-      <p class="sub">From your manuals. Starting budget <span class="kbd">${D.startingBudget}</span> coins.</p>
-
-      <div class="rules-sec"><h3>🚇 Transport cost</h3>
-        <table class="rtable"><tr><th>Mode</th><th>Cost</th></tr>${t}</table>
-        <p class="tiny">MTR = the number printed on the map edge, ×2.</p></div>
-
-      <div class="rules-sec"><h3>✨ Powerup shop <span class="tiny">(districts 3–5, buy before rolling a challenge)</span></h3>
-        <table class="rtable"><tr><th></th><th>Powerup</th><th class="num">Cost</th></tr>${pu}</table></div>
-
-
-      <div class="rules-sec"><h3>⛔ Roadblocks <span class="tiny">(${D.roadblockDiameterM} m · ${D.roadblockMin} min · next after ${D.roadblockCooldownMin} min · can't trap a player)</span></h3>
-        <table class="rtable"><tr><th>Type</th><th class="num">Cost</th></tr>${rb}</table></div>
-
-      <div class="rules-sec"><h3>⚔️ Stealing districts</h3>
-        <table class="rtable"><tr><th>Bordering districts you own</th><th class="num">Initiation cost</th></tr>
-          <tr><td>1</td><td class="num">${D.steal['1']}</td></tr>
-          <tr><td>2</td><td class="num">${D.steal['2']}</td></tr>
-          <tr><td>3+</td><td class="num">${D.steal['3']}</td></tr></table>
-        <p class="tiny">${esc(D.steal.note)}</p></div>
+      <h2>Rules Reference <span class="tiny">— District Claiming (Flop version)</span></h2>
+      <p class="sub">Starting budget <span class="kbd">${D.startingBudget}</span> coins · +<span class="kbd">${D.incomeAmount}</span> every <span class="kbd">${D.incomeIntervalMin} min</span>.</p>
 
       <div class="rules-sec"><h3>🏁 Win condition</h3>
-        <div class="rcard"><b>Largest connected land area wins.</b> Only districts connected to each other (via land or an enabled sea-crossing) count toward a team's score — exactly what the Leaderboard computes.</div></div>`;
+        <div class="rcard"><b>Most districts by the end of the day wins.</b> Tiebreaker: total land area of the districts claimed. (The Leaderboard ranks by district count, then area.)</div></div>
+
+      <div class="rules-sec"><h3>🃏 The Flop</h3>
+        <div class="rcard">Challenges are <b>normal</b> or <b style="color:#f5b021">hard 🟧</b> (2 normal + 1 hard per district). ${D.flopSize || 6} normal cards from ${D.flopSize || 6} different districts sit in <b>The Flop</b>. Race to complete one to claim that district; it then leaves the Flop permanently, the completing team may swap one more card, and others may protect a card. The 2 rare + 6 wildcard cards can also appear. <i>(The interactive Flop board is the next build — for now, complete any card from the deck or map.)</i></div></div>
+
+      <div class="rules-sec"><h3>⚔️ Stealing & locking</h3>
+        <div class="rcard">To <b>steal</b> an opponent's district: own ≥1 district bordering it (<span style="color:#22c55e">land</span> or <span style="color:#22d3ee">sea</span>) <b>and</b> complete that district's <b style="color:#f5b021">hard challenge 🟧</b>. A stolen (or hard-claimed) district is <b>locked 🔒</b> — permanent, and can't be stolen. No coin cost.</div></div>
+
+      <div class="rules-sec"><h3>🚇 Transport fares</h3>
+        <table class="rtable"><tr><th>Mode</th><th>Cost</th></tr>${t}</table>
+        <p class="tiny">MTR = the green value from the MTR Fare Calculator, ×3.</p></div>
+
+      <div class="rules-sec"><h3>📍 Location</h3>
+        <div class="rcard">Each team's location can be seen by opposing team(s) at all times. Members should stay together. Turn on <b>Share my live location</b> in My Team.</div></div>
+
+      <div class="rules-sec"><h3>📸 Proof</h3>
+        <div class="rcard">${esc(D.proofNote || '')}</div></div>
+
+      <div class="rules-sec"><h3>⛈ Severe weather</h3>
+        <div class="rcard">${esc(D.weatherNote || '')}</div></div>`;
   }
 
   /* ---------- data / export ---------- */

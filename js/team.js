@@ -9,7 +9,14 @@ const Team = (function () {
   let C = {};
 
   function init() {}
-  function tick(ctx) { C = ctx || C; /* nothing time-based here */ }
+  function tick(ctx) { C = ctx || C; const el = document.getElementById('incomeCountdown'); if (el) el.textContent = incomeText(); }
+
+  function incomeText() {
+    const ni = App.nextIncome();
+    if (!ni) return '⏱ Coin clock starts when the first team joins.';
+    const s = Math.max(0, Math.floor(ni.msLeft / 1000)), m = Math.floor(s / 60);
+    return `⏱ +${ni.amount} coins in ${m}:${String(s % 60).padStart(2, '0')}`;
+  }
 
   function render(ctx) {
     C = ctx;
@@ -48,14 +55,17 @@ const Team = (function () {
           <input type="color" class="team-color" value="${esc(t.color)}" onchange="App.setTeamColor('${me}',this.value)" />
         </div>
         <div class="coin-bar">
-          <div class="coin-big ${coins < 0 ? 'neg' : ''}">🪙 ${coins}</div>
+          <div class="coin-big ${coins < 0 ? 'neg' : ''}">🪙 ${App.fmtCoins(coins)}</div>
           <div class="coin-ctrl">
             <button onclick="App.adjustCoins('${me}',-50,'manual')">−50</button>
-            <input type="number" value="${coins}" onchange="App.setCoins('${me}',this.value)" />
+            <input type="number" step="any" value="${App.fmtCoins(coins)}" onchange="App.setCoins('${me}',this.value)" />
             <button onclick="App.adjustCoins('${me}',50,'manual')">+50</button>
           </div>
         </div>
-        <div class="team-stats">🗺 ${s.count} districts · 🏆 ${App.fmtArea(s.bestArea)} km² connected · ${App.fmtArea(s.totalArea)} km² total</div>
+        <div class="income-row"><span id="incomeCountdown">${incomeText()}</span>
+          ${C.isHost ? `<button class="link-btn" onclick="App.resetIncomeClock()">reset clock</button>` : ''}</div>
+        <div class="team-stats">🗺 ${s.count} districts · ${App.fmtArea(s.totalArea)} km² total area</div>
+        <button class="btn ${C.sharingLoc ? 'good' : 'ghost'} wide loc-toggle" onclick="App.toggleLocation()">${C.sharingLoc ? '📍 Sharing live location — tap to stop' : '📍 Share my live location'}</button>
       </div>
 
       <div class="card"><div class="card-h">🚇 Transport Calculator</div><div id="tcalc"></div></div>
@@ -71,7 +81,7 @@ const Team = (function () {
 
       <div class="card"><div class="card-h">🗺 My Districts <span class="card-h-note">${mine.length}</span></div>
         <div id="myDistricts">${mine.length ? mine.map(d => `<div class="mini-row">
-            <span class="dcolor" style="background:${esc(t.color)}"></span><span style="flex:1">${esc(Scoring.nameById[d])}</span>
+            <span class="dcolor" style="background:${esc(t.color)}"></span><span style="flex:1">${esc(Scoring.nameById[d])}${(C.claims[d] || {}).locked ? ' 🔒' : ''}</span>
             <span class="tiny">${App.fmtArea(Scoring.areaById[d])} km²</span>
             <button class="btn ghost xs" onclick="App.openDistrictInfo('${d}')">map</button>
             <button class="btn bad xs" onclick="App.unclaim('${d}')">release</button></div>`).join('')
@@ -86,23 +96,30 @@ const Team = (function () {
     renderTransport(); renderShops(); renderSteal();
   }
 
-  /* transport */
+  /* transport — clean calculator with steppers */
   function renderTransport() {
     const el = document.getElementById('tcalc'); if (!el) return;
     const tu = App.ui.transport; const mode = D.transport[tu.mode] || D.transport[0];
-    const { cost, label } = App.transportCost(); const isMtr = mode.rule === 'map';
-    el.innerHTML = `<div class="tcalc-row">
-        <select onchange="Team.onMode(this.value)">
-          ${D.transport.map((m, i) => `<option value="${i}" ${i == tu.mode ? 'selected' : ''}>${esc(m.mode)} — ${esc(m.desc)}</option>`).join('')}
-        </select>
-        ${isMtr ? `<div><span class="field-lbl">Map #</span><input type="number" value="${esc(tu.mtr)}" onchange="Team.onField('mtr',this.value)" /></div>`
-                : `<div><span class="field-lbl">Minutes</span><input type="number" value="${esc(tu.minutes)}" onchange="Team.onField('minutes',this.value)" /></div>`}
+    const { cost } = App.transportCost(); const isMtr = mode.rule === 'map';
+    const val = isMtr ? tu.mtr : tu.minutes; const field = isMtr ? 'mtr' : 'minutes';
+    el.innerHTML = `<div class="tcalc">
+      <label class="field-lbl">Mode of transport</label>
+      <select class="tc-select" onchange="Team.onMode(this.value)">
+        ${D.transport.map((m, i) => `<option value="${i}" ${i == tu.mode ? 'selected' : ''}>${esc(m.mode)} — ${esc(m.desc)}</option>`).join('')}
+      </select>
+      <label class="field-lbl">${isMtr ? 'Fare-calculator value (green number)' : 'Minutes travelled'}</label>
+      <div class="stepper">
+        <button onclick="Team.bump(-1)">−</button>
+        <input type="number" step="any" min="0" value="${esc(String(val))}" onchange="Team.onField('${field}',this.value)" />
+        <button onclick="Team.bump(1)">+</button>
       </div>
-      <div class="tcalc-out"><span>${esc(label)} cost</span><b>${cost} 🪙</b></div>
-      <button class="btn wide" onclick="App.chargeTransport()">Charge my team −${cost}</button>`;
+      <div class="tc-cost"><span>Cost</span><b>${App.fmtCoins(cost)} 🪙</b></div>
+      <button class="btn wide" onclick="App.chargeTransport()">Charge my team − ${App.fmtCoins(cost)} 🪙</button>
+    </div>`;
   }
   function onMode(v) { App.ui.transport.mode = Number(v); App.render(); }
   function onField(f, v) { App.ui.transport[f] = v; App.render(); }
+  function bump(d) { const tu = App.ui.transport; const isMtr = (D.transport[tu.mode] || {}).rule === 'map'; const f = isMtr ? 'mtr' : 'minutes'; tu[f] = Math.max(0, App.round2((Number(tu[f]) || 0) + d)); App.render(); }
 
   /* shops */
   function setShop(s) { App.ui.shop = s; renderShops(); document.querySelectorAll('.shop-tab').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().startsWith(s.slice(0, 4)))); }
@@ -125,41 +142,32 @@ const Team = (function () {
   }
   function onPowerN(id, v) { App.ui.powerN[id] = Math.max(1, Number(v) || 1); renderShops(); }
 
-  /* steal */
+  /* steal (Flop version): own a bordering district (land/sea) + complete the target's HARD challenge */
   function renderSteal() {
     const el = document.getElementById('stealPanel'); if (!el) return;
     const me = C.me; const claims = C.claims || {};
-    const targets = Object.keys(claims).filter(d => claims[d].team !== me);
-    const sel = App.ui.stealTarget && targets.includes(App.ui.stealTarget) ? App.ui.stealTarget : (targets[0] || '');
-    App.ui.stealTarget = sel;
-    let html = '';
-    if (!targets.length) html += `<div class="empty">No opponent districts to steal yet.</div>`;
-    else {
-      const info = App.stealInfo(sel, me);
-      html += `<div class="steal-row"><select onchange="Team.onStealTarget(this.value)">
-        ${targets.map(d => `<option value="${d}" ${d === sel ? 'selected' : ''}>${esc(Scoring.nameById[d])} (${esc((C.teams[claims[d].team] || {}).name || '')})</option>`).join('')}</select></div>`;
-      if (info.ok) html += `<div class="steal-cost">Bordering districts you own: <b style="color:#fff">${info.borders.length}</b> → <b>${info.cost} 🪙</b><br><span class="tiny">${esc(info.borders.map(b => Scoring.nameById[b]).join(', '))}</span></div>
-        <button class="btn wide" ${App.canAfford(me, info.cost) ? '' : 'disabled'} onclick="App.startSteal('${sel}','${me}')">Pay ${info.cost} & start steal</button>`;
-      else html += `<div class="steal-cost" style="color:#9aa7b4">${esc(info.reason || 'Cannot steal this one.')}</div>`;
-    }
-    // active steals involving me (as raider or defender)
-    const steals = C.steals || {};
-    const mine = Object.keys(steals).filter(d => steals[d].by === me || (claims[d] && claims[d].team === me));
-    if (mine.length) {
-      html += `<div class="steal-step" style="margin-top:12px">⚔️ In progress:</div>`;
-      mine.forEach(d => {
-        const st = steals[d]; const raiding = st.by === me;
-        const chs = C.challenges.filter(c => c.districtId === d && (!claims[d] || claims[d].via !== c.id));
-        html += `<div class="steal-cost"><b style="color:#fff">${esc((C.teams[st.by] || {}).name)}</b> → <b style="color:#fff">${esc(Scoring.nameById[d])}</b><br>`;
-        if (raiding) html += `<div class="steal-row" style="margin-top:6px"><select id="sd-${d}"><option value="">— complete via a different location —</option>${chs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
-          <button class="btn good wide" onclick="App.completeSteal('${d}', document.getElementById('sd-${d}').value)">Complete steal</button>`;
-        else html += `<div class="tiny" style="margin:4px 0">An opponent is stealing this from you.</div><button class="btn wide" onclick="App.cancelSteal('${d}', true)">Defend & lock</button>`;
+    const oppo = Object.keys(claims).filter(d => claims[d].team !== me);
+    let html = `<div class="tiny" style="margin-bottom:8px">Own a district bordering the target (land/sea) <b>and</b> complete its <span style="color:#f5b021">HARD</span> challenge. No coin cost. Stolen districts become permanent 🔒.</div>`;
+    if (!oppo.length) { el.innerHTML = html + `<div class="empty">No opponent districts yet.</div>`; return; }
+    const rows = oppo.map(d => ({ d, info: App.stealInfo(d, me), claim: claims[d] }));
+    const eligible = rows.filter(r => r.info.ok);
+    const need = rows.filter(r => !r.info.ok && !r.claim.locked);
+    const locked = rows.filter(r => r.claim.locked);
+    if (eligible.length) {
+      html += `<div class="steal-step">⚔️ You can steal:</div>`;
+      eligible.forEach(r => {
+        const hard = r.info.hard;
+        html += `<div class="steal-cost"><b style="color:#fff">${esc(Scoring.nameById[r.d])}</b> <span class="tiny">held by ${esc((C.teams[r.claim.team] || {}).name || '')}</span>`;
+        html += hard ? `<div class="dc-text" style="margin:5px 0">🟧 <b>${esc(hard.name)}</b>: ${esc(hard.text || '—')}</div>
+          <button class="btn good wide" onclick="App.completeChallenge('${hard.id}')">Complete hard challenge → steal</button>`
+          : `<div class="tiny" style="margin-top:4px">No hard challenge defined for this district yet (add one in Build).</div>`;
         html += `</div>`;
       });
     }
+    if (need.length) html += `<div class="steal-step" style="margin-top:10px">Get a bordering district first:</div>` + need.map(r => `<div class="tiny" style="padding:2px 0">• ${esc(Scoring.nameById[r.d])}</div>`).join('');
+    if (locked.length) html += `<div class="steal-step" style="margin-top:10px">🔒 Locked (safe):</div>` + locked.map(r => `<div class="tiny" style="padding:2px 0">• ${esc(Scoring.nameById[r.d])}</div>`).join('');
     el.innerHTML = html;
   }
-  function onStealTarget(v) { App.ui.stealTarget = v; renderSteal(); }
 
-  return { init, render, tick, onMode, onField, setShop, onPowerN, onStealTarget };
+  return { init, render, tick, onMode, onField, bump, setShop, onPowerN };
 })();

@@ -49,9 +49,9 @@ const Game = (function () {
     const el = document.getElementById('leaderboard');
     const teams = Object.values(C.teams || {});
     if (!teams.length) { el.innerHTML = `<div class="empty">No teams yet. Log in (top-right) to create one.</div>`; return; }
-    const rows = teams.map(t => ({ t, s: C.scores[t.id] || { bestArea: 0, totalArea: 0, count: 0, bestComponent: [] } }))
-      .sort((a, b) => b.s.bestArea - a.s.bestArea);
-    const max = Math.max(1, rows[0].s.bestArea);
+    const rows = teams.map(t => ({ t, s: C.scores[t.id] || { count: 0, totalArea: 0 } }))
+      .sort((a, b) => b.s.count - a.s.count || b.s.totalArea - a.s.totalArea);   // most districts; tiebreak area
+    const max = Math.max(1, rows[0].s.count);
     const medals = ['🥇', '🥈', '🥉'];
     el.innerHTML = rows.map((r, i) => `
       <div class="lb-row">
@@ -59,10 +59,10 @@ const Game = (function () {
         <div class="lb-dot" style="background:${esc(r.t.color)}"></div>
         <div style="flex:1;min-width:0">
           <div class="lb-name">${esc(r.t.name)}</div>
-          <div class="lb-sub">${r.s.bestComponent.length} connected · ${r.s.count} claimed · ${App.fmtArea(r.s.totalArea)} km² total</div>
-          <div class="lb-bar"><i style="width:${(r.s.bestArea / max * 100).toFixed(0)}%;background:${esc(r.t.color)}"></i></div>
+          <div class="lb-sub">${App.fmtArea(r.s.totalArea)} km² total area <span class="tiny">(tiebreak)</span></div>
+          <div class="lb-bar"><i style="width:${(r.s.count / max * 100).toFixed(0)}%;background:${esc(r.t.color)}"></i></div>
         </div>
-        <div class="lb-area">${App.fmtArea(r.s.bestArea)}<small> km²</small></div>
+        <div class="lb-area">${r.s.count}<small> districts</small></div>
       </div>`).join('');
   }
 
@@ -100,28 +100,35 @@ const Game = (function () {
     if (q) list = list.filter(c => (c.name + ' ' + (c.text || '')).toLowerCase().includes(q));
     document.getElementById('deckCount').textContent = list.length + ' cards';
 
-    // group by district
+    const card = c => {
+      const done = (C.challengeDone || {})[c.id]; const dt = done ? (C.teams[done] || {}) : null;
+      const hard = c.type === 'hard';
+      const canDo = C.me && c.districtId;
+      return `<div class="deck-card ${done ? 'done' : ''} ${hard ? 'hard' : ''}">
+        <div class="dc-top">${c.lat != null ? '📍 ' : ''}${hard ? '🟧 ' : ''}<b>${esc(c.name)}</b>${dt ? `<span class="dc-done" style="background:${esc(dt.color || '#22c55e')}">✓ ${esc(dt.name)}</span>` : ''}</div>
+        <div class="dc-text">${esc(c.text || 'No challenge text yet.')}</div>
+        ${canDo ? `<button class="dc-btn ${hard ? 'hard' : ''}" onclick="App.completeChallenge('${c.id}')">Complete${hard ? ' (hard)' : ''}</button>` : ''}</div>`;
+    };
+
     const byD = {};
-    list.forEach(c => (byD[c.districtId] = byD[c.districtId] || []).push(c));
+    list.filter(c => c.districtId).forEach(c => (byD[c.districtId] = byD[c.districtId] || []).push(c));
     const order = Scoring.allIds.filter(id => byD[id]);
+    const rares = list.filter(c => c.type === 'rare'), wilds = list.filter(c => c.type === 'wildcard');
     const el = document.getElementById('publicDeck');
-    if (!order.length) { el.innerHTML = `<div class="empty">No cards match.</div>`; return; }
-    el.innerHTML = order.map(did => {
-      const claim = (C.claims || {})[did];
-      const owner = claim ? (C.teams[claim.team] || {}) : null;
+    if (!order.length && !rares.length && !wilds.length) { el.innerHTML = `<div class="empty">No cards match.</div>`; return; }
+    let html = order.map(did => {
+      const claim = (C.claims || {})[did]; const owner = claim ? (C.teams[claim.team] || {}) : null;
+      byD[did].sort((a, b) => (a.type === 'hard') - (b.type === 'hard'));
       return `<div class="deck-group">
         <div class="deck-group-h" onclick="App.openDistrictInfo('${did}')">
           <span class="dcolor" style="background:${owner ? esc(owner.color) : '#3a4252'}"></span>
-          <b>${esc(Scoring.nameById[did])}</b>
+          <b>${esc(Scoring.nameById[did])}</b>${claim && claim.locked ? ' 🔒' : ''}
           <span class="tiny">${owner ? esc(owner.name) : 'unclaimed'} · ${App.fmtArea(Scoring.areaById[did])} km²</span></div>
-        ${byD[did].map(c => {
-          const done = (C.challengeDone || {})[c.id]; const dt = done ? (C.teams[done] || {}) : null;
-          return `<div class="deck-card ${done ? 'done' : ''}">
-            <div class="dc-top">${c.lat != null ? '📍 ' : ''}<b>${esc(c.name)}</b>${dt ? `<span class="dc-done" style="background:${esc(dt.color || '#22c55e')}">✓ ${esc(dt.name)}</span>` : ''}</div>
-            <div class="dc-text">${esc(c.text || 'No challenge text yet.')}</div></div>`;
-        }).join('')}
-      </div>`;
+        ${byD[did].map(card).join('')}</div>`;
     }).join('');
+    if (rares.length) html += `<div class="deck-special">✨ Rare Flop Challenges</div>` + rares.map(card).join('');
+    if (wilds.length) html += `<div class="deck-special">🃏 Wildcard Challenges</div>` + wilds.map(card).join('');
+    el.innerHTML = html;
   }
   function onDeckSearch(v) { App.ui.deckSearch = v; renderDeck(); const s = document.querySelector('#deckTools .search'); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }
   function onDeckDistrict(v) { App.ui.deckDistrict = v; renderDeck(); }

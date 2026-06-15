@@ -1,8 +1,9 @@
 :root{
   --bg:#0d1117; --bg2:#161b22; --bg3:#1c2230; --line:#2a3040;
   --txt:#e6edf3; --muted:#9aa7b4; --dim:#6b7785;
-  --accent:#3b82f6; --accent2:#2563eb;
-  --good:#22c55e; --warn:#f59e0b; --bad:#ef4444; --gold:#fbbf24;
+  --accent:#e63329; --accent2:#c0271f;            /* Jet Lag red */
+  --good:#22b14c; --warn:#f5c518; --bad:#b3261e; --gold:#f5c518;   /* green / yellow */
+  --hard:#f5901e;                                  /* hard-challenge orange */
   --radius:12px; --shadow:0 4px 18px rgba(0,0,0,.35);
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
@@ -314,3 +315,34 @@ b{color:#fff}
 .dc-top{display:flex;align-items:center;gap:6px;font-size:13px}
 .dc-done{margin-left:auto;font-size:10px;color:#06281a;padding:1px 6px;border-radius:5px;font-weight:700;white-space:nowrap}
 .dc-text{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+
+/* ============ Flop version: transport calc, locations, hard cards ============ */
+/* transport calculator */
+.tcalc{display:flex;flex-direction:column;gap:4px}
+.tc-select{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 10px}
+.stepper{display:flex;align-items:stretch;gap:6px;margin-bottom:4px}
+.stepper button{width:44px;border:1px solid var(--line);background:var(--bg3);color:var(--txt);border-radius:8px;font-size:20px;line-height:1}
+.stepper input{flex:1;text-align:center;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px;font-size:18px;font-variant-numeric:tabular-nums}
+.tc-cost{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin:4px 0 8px}
+.tc-cost b{font-size:20px}
+.income-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--gold);margin:8px 0 4px}
+.income-row .link-btn{margin-left:auto}
+.loc-toggle{margin-top:10px}
+
+/* team location markers */
+.team-loc-wrap{background:none;border:none}
+.team-loc{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
+.team-loc::after{content:attr(data-i);transform:rotate(45deg);font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 2px #000}
+
+/* hard (orange) challenge styling */
+.deck-card.hard{border-color:var(--hard)}
+.deck-card.hard .dc-top b{color:var(--hard)}
+.ch-card.hard{border-color:var(--hard)}
+.dc-btn{margin-top:7px;width:100%;background:var(--accent);border:none;color:#fff;border-radius:7px;padding:7px;font-weight:600;font-size:12px}
+.dc-btn.hard{background:var(--hard)}
+.deck-special{font-weight:700;font-size:13px;margin:12px 0 6px;color:var(--gold);border-top:1px solid var(--line);padding-top:10px}
+.popup-ch{margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+.popup-ch.hard b{color:var(--hard)}
+.popup-done,.dc-done{font-size:10px;color:#06281a;padding:1px 6px;border-radius:5px;font-weight:700;white-space:nowrap}
+.popup-btn{margin-top:6px}
