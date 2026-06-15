@@ -17,7 +17,7 @@ const Game = (function () {
     renderActingBar();
     renderLeaderboard();
     renderEffects();
-    renderDeck();
+    renderFlop();
     renderLog();
   }
   function tick(ctx) { C = ctx || C; renderEffects(); }
@@ -83,55 +83,42 @@ const Game = (function () {
     }).join('');
   }
 
-  /* PUBLIC DECK — every challenge card, grouped by district, read-only */
-  function renderDeck() {
+  /* THE FLOP — at most flopSize NORMAL cards, each from a different district */
+  function renderFlop() {
     const tools = document.getElementById('deckTools');
-    const q = (App.ui.deckSearch || '').toLowerCase();
-    const fd = App.ui.deckDistrict || '';
-    tools.innerHTML = `<div class="deck-tools">
-      <input class="search" placeholder="Search the deck…" value="${esc(App.ui.deckSearch || '')}" oninput="Game.onDeckSearch(this.value)" />
-      <select class="chip-select" onchange="Game.onDeckDistrict(this.value)">
-        <option value="">All districts</option>
-        ${Scoring.allIds.map(id => `<option value="${id}" ${id === fd ? 'selected' : ''}>${esc(Scoring.nameById[id])}</option>`).join('')}
-      </select></div>`;
-
-    let list = (C.challenges || []).slice();
-    if (fd) list = list.filter(c => c.districtId === fd);
-    if (q) list = list.filter(c => (c.name + ' ' + (c.text || '')).toLowerCase().includes(q));
-    document.getElementById('deckCount').textContent = list.length + ' cards';
-
-    const card = c => {
-      const done = (C.challengeDone || {})[c.id]; const dt = done ? (C.teams[done] || {}) : null;
-      const hard = c.type === 'hard';
-      const canDo = C.me && c.districtId;
-      return `<div class="deck-card ${done ? 'done' : ''} ${hard ? 'hard' : ''}">
-        <div class="dc-top">${c.lat != null ? '📍 ' : ''}${hard ? '🟧 ' : ''}<b>${esc(c.name)}</b>${dt ? `<span class="dc-done" style="background:${esc(dt.color || '#22c55e')}">✓ ${esc(dt.name)}</span>` : ''}</div>
-        <div class="dc-text">${esc(c.text || 'No challenge text yet.')}</div>
-        ${canDo ? `<button class="dc-btn ${hard ? 'hard' : ''}" onclick="App.completeChallenge('${c.id}')">Complete${hard ? ' (hard)' : ''}</button>` : ''}</div>`;
-    };
-
-    const byD = {};
-    list.filter(c => c.districtId).forEach(c => (byD[c.districtId] = byD[c.districtId] || []).push(c));
-    const order = Scoring.allIds.filter(id => byD[id]);
-    const rares = list.filter(c => c.type === 'rare'), wilds = list.filter(c => c.type === 'wildcard');
     const el = document.getElementById('publicDeck');
-    if (!order.length && !rares.length && !wilds.length) { el.innerHTML = `<div class="empty">No cards match.</div>`; return; }
-    let html = order.map(did => {
-      const claim = (C.claims || {})[did]; const owner = claim ? (C.teams[claim.team] || {}) : null;
-      byD[did].sort((a, b) => (a.type === 'hard') - (b.type === 'hard'));
-      return `<div class="deck-group">
-        <div class="deck-group-h" onclick="App.openDistrictInfo('${did}')">
-          <span class="dcolor" style="background:${owner ? esc(owner.color) : '#3a4252'}"></span>
-          <b>${esc(Scoring.nameById[did])}</b>${claim && claim.locked ? ' 🔒' : ''}
-          <span class="tiny">${owner ? esc(owner.name) : 'unclaimed'} · ${App.fmtArea(Scoring.areaById[did])} km²</span></div>
-        ${byD[did].map(card).join('')}</div>`;
+    const flop = App.flopList();
+    const round = C.flopRound; const me = C.me;
+    document.getElementById('deckCount').textContent = flop.length + ' / ' + (D.flopSize || 6);
+
+    let ctrl = '';
+    if (C.isHost) ctrl += `<button class="dc-btn" style="background:var(--accent2);margin-bottom:6px" onclick="App.dealFlop()">${flop.length ? '🔄 Reseed The Flop' : '🎲 Deal The Flop'}</button>`;
+    if (round) {
+      const byName = (C.teams[round.by] || {}).name || 'A team';
+      ctrl += round.by === me
+        ? `<div class="flop-round">🔄 Your move — tap <b>Swap</b> on one card, or <button class="link-btn" onclick="App.endFlopRound()">skip</button>.</div>`
+        : `<div class="flop-round">${esc(byName)} may swap a card. Tap <b>🛡 Protect</b> to shield one.</div>`;
+    }
+    tools.innerHTML = ctrl;
+
+    if (!flop.length) { el.innerHTML = `<div class="empty">${C.isHost ? 'Tap “Deal The Flop” to start.' : 'Waiting for the host to deal The Flop.'}</div>`; return; }
+    const protCount = Object.keys(C.flopProtect || {}).length;
+    el.innerHTML = flop.map(c => {
+      const prot = (C.flopProtect || {})[c.id];
+      const canComplete = me && c.districtId;
+      const isOwner = round && round.by === me;
+      const canProtect = round && me && round.by !== me && !Object.values(C.flopProtect || {}).includes(me);
+      return `<div class="deck-card ${prot ? 'protected' : ''}">
+        <div class="dc-top">${c.lat != null ? '📍 ' : ''}<b>${esc(c.name)}</b>${prot ? ` <span class="tiny">🛡 ${esc((C.teams[prot] || {}).name || '')}</span>` : ''}</div>
+        <div class="dc-sub">📌 ${esc(Scoring.nameById[c.districtId])} · ${App.fmtArea(Scoring.areaById[c.districtId])} km²</div>
+        <div class="dc-text">${esc(c.text || 'No challenge text yet — add it in Build.')}</div>
+        <div class="flop-acts">
+          ${canComplete ? `<button class="dc-btn" onclick="App.completeChallenge('${c.id}')">Complete → claim</button>` : ''}
+          ${isOwner && !prot ? `<button class="dc-btn alt" onclick="App.swapFlopCard('${c.id}')">🔄 Swap</button>` : ''}
+          ${canProtect ? `<button class="dc-btn alt" onclick="App.protectFlopCard('${c.id}')">🛡 Protect</button>` : ''}
+        </div></div>`;
     }).join('');
-    if (rares.length) html += `<div class="deck-special">✨ Rare Flop Challenges</div>` + rares.map(card).join('');
-    if (wilds.length) html += `<div class="deck-special">🃏 Wildcard Challenges</div>` + wilds.map(card).join('');
-    el.innerHTML = html;
   }
-  function onDeckSearch(v) { App.ui.deckSearch = v; renderDeck(); const s = document.querySelector('#deckTools .search'); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }
-  function onDeckDistrict(v) { App.ui.deckDistrict = v; renderDeck(); }
 
   function renderLog() {
     const el = document.getElementById('logPanel');
@@ -144,5 +131,5 @@ const Game = (function () {
     }).join('');
   }
 
-  return { init, render, tick, onDeckSearch, onDeckDistrict };
+  return { init, render, tick };
 })();

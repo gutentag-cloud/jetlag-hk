@@ -78,6 +78,7 @@ const App = (function () {
       teams, claims, steals: raw.steals || {}, coins: raw.coins || {}, effects: raw.effects || {},
       challengeDone: raw.challengeDone || {}, log: raw.log || {}, borders, graph, challenges,
       locations: raw.locations || {}, meta: raw.meta || {},
+      flop: raw.flop || {}, flopProtect: raw.flopProtect || {}, flopRound: raw.flopRound || null,
       ownedByTeam, scores, showMarkers: true, ui,
       me: currentTeam(), role: Auth.role(), isHost: Auth.isHost(),
       sharingLoc: isSharingLoc(), showBordersFor: ui.showBordersFor
@@ -137,6 +138,7 @@ const App = (function () {
     const tn = (raw.teams[teamId] || {}).name || 'Team';
     log(tn + ' claimed ' + Scoring.nameById[did] + (locked ? ' 🔒 (hard challenge)' : '') + '.');
     toast(tn + ' claimed ' + Scoring.nameById[did] + (locked ? ' 🔒' : ''));
+    maintainFlopAfterClaim(did, teamId);
   }
   function unclaim(did) {
     const c = (raw.claims || {})[did]; if (!c) return;
@@ -176,9 +178,81 @@ const App = (function () {
       Sync.write('challengeDone/' + challengeId, me);
       log((raw.teams[me] || {}).name + ' STOLE ' + Scoring.nameById[did] + ' 🔒 (hard challenge).');
       toast('Stolen: ' + Scoring.nameById[did] + ' 🔒');
+      maintainFlopAfterClaim(did, me);
     }
     closePopups();
   }
+
+  /* ============ THE FLOP ============
+     At most flopSize (6) NORMAL cards, each from a DIFFERENT unclaimed district.
+     Complete one → claim → it leaves the Flop and a new card is drawn. The
+     completer may swap one more card; other teams may protect a card first. */
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function flopList() {
+    const f = raw.flop || {};
+    return Object.keys(f).map(id => ctx.challenges.find(c => c.id === id)).filter(Boolean)
+      .sort((a, b) => (f[a.id] || 0) - (f[b.id] || 0));
+  }
+  function eligibleForFlop() {
+    const inFlop = new Set(Object.keys(raw.flop || {}));
+    const flopD = new Set(flopList().map(c => c.districtId));
+    const claims = raw.claims || {};
+    return ctx.challenges.filter(c =>
+      c.type === 'normal' && c.districtId && (c.text || '').trim() &&
+      !inFlop.has(c.id) && !claims[c.districtId] && !flopD.has(c.districtId));
+  }
+  function dealFlop() {
+    if (!requireHost()) return;
+    const size = D.flopSize || 6;
+    const chosen = []; const usedD = new Set();
+    for (const c of shuffle(eligibleForFlop())) {
+      if (chosen.length >= size) break;
+      if (!usedD.has(c.districtId)) { chosen.push(c); usedD.add(c.districtId); }
+    }
+    const map = {}; const t = now();
+    chosen.forEach((c, i) => map[c.id] = t + i);
+    Sync.write('flop', map); Sync.remove('flopProtect'); Sync.remove('flopRound');
+    log('The Flop was dealt (' + chosen.length + ' cards).');
+    toast('Dealt The Flop: ' + chosen.length + ' cards.');
+  }
+  function drawFlopCard(excludeDistrict) {
+    const pool = eligibleForFlop().filter(c => c.districtId !== excludeDistrict);
+    if (!pool.length) return null;
+    const c = pool[Math.floor(Math.random() * pool.length)];
+    Sync.write('flop/' + c.id, now());
+    return c;
+  }
+  // when a district becomes claimed, drop its Flop card & draw a replacement; open a round
+  function maintainFlopAfterClaim(did, byTeam) {
+    const flop = raw.flop || {}; let removed = false;
+    ctx.challenges.forEach(c => { if (c.districtId === did && flop[c.id]) { Sync.remove('flop/' + c.id); removed = true; } });
+    if (removed) {
+      drawFlopCard(did);
+      Sync.write('flopRound', { by: byTeam, at: now() });
+      Sync.remove('flopProtect');
+    }
+  }
+  function protectFlopCard(cardId) {
+    const me = currentTeam(); const round = raw.flopRound;
+    if (!me || !round) return;
+    if (round.by === me) { toast('You are the one who may swap — opponents protect.'); return; }
+    const prot = raw.flopProtect || {};
+    if (Object.values(prot).includes(me)) { toast('You already protected a card this round.'); return; }
+    Sync.write('flopProtect/' + cardId, me);
+    log((raw.teams[me] || {}).name + ' protected a Flop card.');
+  }
+  function swapFlopCard(cardId) {
+    const me = currentTeam(); const round = raw.flopRound;
+    if (!round || round.by !== me) { toast('Only the team that just claimed may swap.'); return; }
+    if ((raw.flopProtect || {})[cardId]) { toast('That card is protected this round.'); return; }
+    const card = ctx.challenges.find(c => c.id === cardId);
+    Sync.remove('flop/' + cardId);
+    drawFlopCard(card ? card.districtId : null);
+    Sync.remove('flopRound'); Sync.remove('flopProtect');
+    log((raw.teams[me] || {}).name + ' swapped a Flop card.');
+    toast('Swapped a card.');
+  }
+  function endFlopRound() { Sync.remove('flopRound'); Sync.remove('flopProtect'); }
 
   /* coins (decimals allowed) */
   function setCoins(teamId, val) { if (requireActAs(teamId)) Sync.write('coins/' + teamId, round2(val)); }
@@ -541,6 +615,7 @@ const App = (function () {
     currentTeam, switchTab, openLoginModal, clearBorders, openDistrictInfo,
     createTeam, addTeamHost, renameTeam, setTeamColor, removeTeam, setHostActing,
     claimDistrict, unclaim, lockDistrict, completeChallenge,
+    dealFlop, flopList, eligibleForFlop, swapFlopCard, protectFlopCard, endFlopRound,
     setCoins, adjustCoins, canAfford, transportCost, chargeTransport,
     nextIncome, resetIncomeClock,
     toggleLocation, isSharingLoc, startLocation, stopLocation,
