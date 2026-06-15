@@ -17,7 +17,7 @@ const App = (function () {
   const ui = {
     tab: 'game', buildView: 'challenges', mapMode: 'claim', shop: 'powerup',
     hostActing: null, showBordersFor: null, deckDistrict: '', deckSearch: '',
-    transport: { mode: 0, minutes: 10, mtr: 10 }, powerN: {}, search: '', filterDistrict: '', stealTarget: null
+    transport: { mode: 0, minutes: 10, mtr: 10, mtrFrom: '', mtrTo: '', mtrMode: 'cheapest' }, powerN: {}, search: '', filterDistrict: '', stealTarget: null
   };
 
   /* ---------- utils ---------- */
@@ -245,7 +245,14 @@ const App = (function () {
   /* transport */
   function transportCost() {
     const t = D.transport[ui.transport.mode] || D.transport[0];
-    if (t.rule === 'map') { const n = Number(ui.transport.mtr) || 0; return { cost: round2(n * (t.mult || 2)), label: t.mode, rate: t.desc }; }
+    if (t.rule === 'map') {                          // MTR: compute fare from From/To via the MTR module
+      const from = ui.transport.mtrFrom, to = ui.transport.mtrTo;
+      if (typeof MTR !== 'undefined' && MTR.valid(from) && MTR.valid(to) && from !== to) {
+        const r = MTR.compute(from, to, ui.transport.mtrMode || 'cheapest');
+        if (r.ok) return { cost: round2(r.fareUnits * (t.mult || 3)), label: t.mode, rate: t.desc, mtr: r };
+      }
+      return { cost: 0, label: t.mode, rate: t.desc };
+    }
     const mins = Number(ui.transport.minutes) || 0;
     const cost = t.rule === 'per2min' ? t.rate * mins / 2 : t.rate * mins;
     return { cost: round2(cost), label: t.mode, rate: t.desc };
@@ -253,10 +260,15 @@ const App = (function () {
   function chargeTransport() {
     const team = currentTeam();
     if (!team) { toast('🔒 Log in as a team first.'); return; }
-    const { cost, label } = transportCost();
-    if (cost <= 0) { toast('Enter time / map number.'); return; }
-    adjustCoins(team, -cost, 'transport · ' + label);
-    toast('-' + cost + ' coins · ' + label);
+    const tc = transportCost();
+    if (tc.cost <= 0) {
+      toast((D.transport[ui.transport.mode] || {}).rule === 'map' ? 'Pick two MTR stations.' : 'Enter time.');
+      return;
+    }
+    let label = tc.label;
+    if (tc.mtr) label += ' ' + ui.transport.mtrFrom + ' → ' + ui.transport.mtrTo;
+    adjustCoins(team, -tc.cost, 'transport · ' + label);
+    toast('−' + fmtCoins(tc.cost) + ' coins · ' + label);
   }
 
   /* powerups */

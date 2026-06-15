@@ -346,3 +346,13 @@ b{color:#fff}
 .popup-ch.hard b{color:var(--hard)}
 .popup-done,.dc-done{font-size:10px;color:#06281a;padding:1px 6px;border-radius:5px;font-weight:700;white-space:nowrap}
 .popup-btn{margin-top:6px}
+
+/* ============ MTR route + fare calculator ============ */
+.mtr-modes{display:flex;gap:6px;margin:8px 0 4px}
+.mtr-modes .seg{flex:1;background:var(--bg3);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:7px;font-size:12px;font-weight:600}
+.mtr-modes .seg.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mtr-result{background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:9px;margin:4px 0 8px}
+.mtr-leg{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.mtr-leg:last-child{border-bottom:none}
+.mtr-line{font-weight:700;font-size:10px;letter-spacing:.5px;background:var(--bg);border:1px solid var(--line);
+  border-radius:5px;padding:2px 6px;min-width:42px;text-align:center;color:var(--gold)}

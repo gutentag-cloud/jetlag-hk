@@ -96,30 +96,46 @@ const Team = (function () {
     renderTransport(); renderShops(); renderSteal();
   }
 
-  /* transport — clean calculator with steppers */
+  /* transport — per-minute stepper, or built-in MTR route+fare calculator */
   function renderTransport() {
     const el = document.getElementById('tcalc'); if (!el) return;
     const tu = App.ui.transport; const mode = D.transport[tu.mode] || D.transport[0];
-    const { cost } = App.transportCost(); const isMtr = mode.rule === 'map';
-    const val = isMtr ? tu.mtr : tu.minutes; const field = isMtr ? 'mtr' : 'minutes';
+    const tc = App.transportCost(); const isMtr = mode.rule === 'map';
+    const mid = isMtr ? mtrMiddle(tu, tc) : `<label class="field-lbl">Minutes travelled</label>
+      <div class="stepper"><button onclick="Team.bump(-1)">−</button>
+        <input type="number" step="any" min="0" value="${esc(String(tu.minutes))}" onchange="Team.onField('minutes',this.value)" />
+        <button onclick="Team.bump(1)">+</button></div>`;
     el.innerHTML = `<div class="tcalc">
       <label class="field-lbl">Mode of transport</label>
       <select class="tc-select" onchange="Team.onMode(this.value)">
         ${D.transport.map((m, i) => `<option value="${i}" ${i == tu.mode ? 'selected' : ''}>${esc(m.mode)} — ${esc(m.desc)}</option>`).join('')}
       </select>
-      <label class="field-lbl">${isMtr ? 'Fare-calculator value (green number)' : 'Minutes travelled'}</label>
-      <div class="stepper">
-        <button onclick="Team.bump(-1)">−</button>
-        <input type="number" step="any" min="0" value="${esc(String(val))}" onchange="Team.onField('${field}',this.value)" />
-        <button onclick="Team.bump(1)">+</button>
+      ${mid}
+      <div class="tc-cost"><span>Cost</span><b>${App.fmtCoins(tc.cost)} 🪙</b></div>
+      <button class="btn wide" onclick="App.chargeTransport()">Charge my team − ${App.fmtCoins(tc.cost)} 🪙</button>
+    </div>
+    ${isMtr ? `<datalist id="mtrStations">${MTR.STATIONS.map(s => `<option value="${esc(s)}"></option>`).join('')}</datalist>` : ''}`;
+  }
+  function mtrMiddle(tu, tc) {
+    const r = tc.mtr; const m = tu.mtrMode || 'cheapest';
+    return `<label class="field-lbl">From station</label>
+      <input class="tc-select" list="mtrStations" value="${esc(tu.mtrFrom || '')}" placeholder="e.g. Central" onchange="Team.onMtr('mtrFrom',this.value)" />
+      <label class="field-lbl">To station</label>
+      <input class="tc-select" list="mtrStations" value="${esc(tu.mtrTo || '')}" placeholder="e.g. Tsuen Wan" onchange="Team.onMtr('mtrTo',this.value)" />
+      <div class="mtr-modes">
+        <button class="seg ${m === 'cheapest' ? 'on' : ''}" onclick="Team.onMtrMode('cheapest')">Cheapest</button>
+        <button class="seg ${m === 'fastest' ? 'on' : ''}" onclick="Team.onMtrMode('fastest')">Fastest</button>
       </div>
-      <div class="tc-cost"><span>Cost</span><b>${App.fmtCoins(cost)} 🪙</b></div>
-      <button class="btn wide" onclick="App.chargeTransport()">Charge my team − ${App.fmtCoins(cost)} 🪙</button>
-    </div>`;
+      ${r ? `<div class="mtr-result">
+          ${r.legs.map(l => `<div class="mtr-leg"><span class="mtr-line">${esc(l.line)}</span><span style="flex:1">${esc(l.from)} → ${esc(l.to)}</span><span class="tiny">${l.time}m</span></div>`).join('')}
+          <div class="tiny" style="margin-top:5px">${r.fareUnits} fare units × 3 · ⏱ ${r.timeMins} min · ${r.stops} stops</div>
+        </div>` : `<div class="tiny" style="margin:6px 0">Pick two stations to compute the MTR fare.</div>`}`;
   }
   function onMode(v) { App.ui.transport.mode = Number(v); App.render(); }
   function onField(f, v) { App.ui.transport[f] = v; App.render(); }
-  function bump(d) { const tu = App.ui.transport; const isMtr = (D.transport[tu.mode] || {}).rule === 'map'; const f = isMtr ? 'mtr' : 'minutes'; tu[f] = Math.max(0, App.round2((Number(tu[f]) || 0) + d)); App.render(); }
+  function bump(d) { const tu = App.ui.transport; tu.minutes = Math.max(0, App.round2((Number(tu.minutes) || 0) + d)); App.render(); }
+  function onMtr(field, v) { App.ui.transport[field] = v.trim(); App.render(); }
+  function onMtrMode(m) { App.ui.transport.mtrMode = m; App.render(); }
 
   /* shops */
   function setShop(s) { App.ui.shop = s; renderShops(); document.querySelectorAll('.shop-tab').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().startsWith(s.slice(0, 4)))); }
@@ -169,5 +185,5 @@ const Team = (function () {
     el.innerHTML = html;
   }
 
-  return { init, render, tick, onMode, onField, bump, setShop, onPowerN };
+  return { init, render, tick, onMode, onField, bump, onMtr, onMtrMode, setShop, onPowerN };
 })();
