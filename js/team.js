@@ -68,7 +68,7 @@ const Team = (function () {
         </div>
         <div class="income-row"><span id="incomeCountdown">${incomeText()}</span>
           ${C.isHost ? `<button class="link-btn" onclick="App.resetIncomeClock()">reset clock</button>` : ''}</div>
-        <div class="team-stats">🗺 ${s.count} districts · ${App.fmtArea(s.totalArea)} km² total area</div>
+        <div class="team-stats">🏆 ${s.count} connected (${s.claimedCount || 0} claimed) · ${App.fmtArea(s.totalArea)} km² connected area</div>
         <button class="btn ${C.sharingLoc ? 'good' : 'ghost'} wide loc-toggle" onclick="App.toggleLocation()">${C.sharingLoc ? '📍 Sharing live location — tap to stop' : '📍 Share my live location'}</button>
       </div>
 

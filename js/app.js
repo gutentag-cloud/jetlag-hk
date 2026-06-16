@@ -72,7 +72,7 @@ const App = (function () {
     Object.keys(teams).forEach(t => ownedByTeam[t] = []);
     Object.keys(claims).forEach(did => { const t = claims[did].team; (ownedByTeam[t] = ownedByTeam[t] || []).push(did); });
     const scores = {};
-    Object.keys(teams).forEach(t => scores[t] = Scoring.teamScore(ownedByTeam[t] || []));
+    Object.keys(teams).forEach(t => scores[t] = Scoring.teamScore(ownedByTeam[t] || [], graph));
 
     ctx = {
       teams, claims, steals: raw.steals || {}, coins: raw.coins || {}, effects: raw.effects || {},

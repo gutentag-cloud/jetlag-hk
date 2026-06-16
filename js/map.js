@@ -62,6 +62,8 @@ const GameMap = (function () {
     lastCtx = ctx;
     if (!map) return;
     const claims = ctx.claims || {};
+    const inBest = {};   // districts in each team's largest connected group (the part that scores)
+    Object.keys(ctx.scores || {}).forEach(tid => (ctx.scores[tid].bestComponent || []).forEach(d => inBest[d] = tid));
     D.districts.features.forEach(f => {
       const id = f.properties.id;
       const layer = layersById[id];
@@ -70,8 +72,9 @@ const GameMap = (function () {
       let style;
       if (claim) {
         const col = teamColor(ctx, claim.team);
-        style = { color: claim.locked ? '#ffffff' : col, weight: claim.locked ? 2.4 : 1.4,
-                  fillColor: col, fillOpacity: claim.locked ? 0.6 : 0.42, dashArray: null };
+        const best = inBest[id] === claim.team;
+        style = { color: (best || claim.locked) ? '#ffffff' : col, weight: best ? 2.6 : (claim.locked ? 2.4 : 1.4),
+                  fillColor: col, fillOpacity: best ? 0.64 : (claim.locked ? 0.55 : 0.4), dashArray: null };
       } else {
         style = { color: '#566', weight: 1.1, fillColor: GREY, fillOpacity: 0.32, dashArray: null };
       }

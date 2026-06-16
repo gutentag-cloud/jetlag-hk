@@ -49,8 +49,8 @@ const Game = (function () {
     const el = document.getElementById('leaderboard');
     const teams = Object.values(C.teams || {});
     if (!teams.length) { el.innerHTML = `<div class="empty">No teams yet. Log in (top-right) to create one.</div>`; return; }
-    const rows = teams.map(t => ({ t, s: C.scores[t.id] || { count: 0, totalArea: 0 } }))
-      .sort((a, b) => b.s.count - a.s.count || b.s.totalArea - a.s.totalArea);   // most districts; tiebreak area
+    const rows = teams.map(t => ({ t, s: C.scores[t.id] || { count: 0, totalArea: 0, claimedCount: 0 } }))
+      .sort((a, b) => b.s.count - a.s.count || b.s.totalArea - a.s.totalArea);   // largest connected group; tiebreak its area
     const max = Math.max(1, rows[0].s.count);
     const medals = ['🥇', '🥈', '🥉'];
     el.innerHTML = rows.map((r, i) => `
@@ -59,10 +59,10 @@ const Game = (function () {
         <div class="lb-dot" style="background:${esc(r.t.color)}"></div>
         <div style="flex:1;min-width:0">
           <div class="lb-name">${esc(r.t.name)}</div>
-          <div class="lb-sub">${App.fmtArea(r.s.totalArea)} km² total area <span class="tiny">(tiebreak)</span></div>
+          <div class="lb-sub">${App.fmtArea(r.s.totalArea)} km² connected · ${r.s.claimedCount || 0} claimed total</div>
           <div class="lb-bar"><i style="width:${(r.s.count / max * 100).toFixed(0)}%;background:${esc(r.t.color)}"></i></div>
         </div>
-        <div class="lb-area">${r.s.count}<small> districts</small></div>
+        <div class="lb-area">${r.s.count}<small> connected</small></div>
       </div>`).join('');
   }
 
