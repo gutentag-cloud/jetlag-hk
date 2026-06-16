@@ -364,3 +364,10 @@ b{color:#fff}
 .flop-acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
 .flop-acts .dc-btn{flex:1;margin-top:0;min-width:110px}
 .dc-btn.alt{background:var(--bg3);border:1px solid var(--line);color:var(--txt)}
+
+/* Flop: show both normal + hard challenge per district */
+.flop-chal{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0}
+.flop-chal.hard{border-color:var(--hard)}
+.fc-name{font-weight:600;font-size:13px;margin-bottom:3px}
+.flop-chal.hard .fc-name{color:var(--hard)}
+.flop-chal .dc-btn{margin-top:6px}

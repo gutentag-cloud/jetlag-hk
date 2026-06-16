@@ -112,13 +112,18 @@ const Game = (function () {
       const canComplete = me && c.districtId;
       const isOwner = round && round.by === me;
       const canProtect = round && me && round.by !== me && !Object.values(C.flopProtect || {}).includes(me);
+      const hard = (C.challenges || []).find(x => x.districtId === c.districtId && x.type === 'hard');
+      const chal = (ch, isHard) => `<div class="flop-chal ${isHard ? 'hard' : ''}">
+        <div class="fc-name">${isHard ? '🟧 ' : '🟢 '}${esc(ch.name)} <span class="tiny">${isHard ? '(hard — claim & lock 🔒)' : '(normal — claim)'}</span></div>
+        <div class="dc-text">${esc(ch.text || 'No challenge text yet — add it in Build.')}</div>
+        ${canComplete ? `<button class="dc-btn ${isHard ? 'hard' : ''}" onclick="App.completeChallenge('${ch.id}')">Complete${isHard ? ' → lock 🔒' : ' → claim'}</button>` : ''}</div>`;
       return `<div class="deck-card ${prot ? 'protected' : ''}">
-        <div class="dc-top">${c.lat != null ? '📍 ' : ''}<b>${esc(c.name)}</b>${prot ? ` <span class="tiny">🛡 ${esc((C.teams[prot] || {}).name || '')}</span>` : ''}</div>
-        <div class="dc-sub">📌 ${esc(Scoring.nameById[c.districtId])} · ${App.fmtArea(Scoring.areaById[c.districtId])} km²</div>
-        <div class="dc-text">${esc(c.text || 'No challenge text yet — add it in Build.')}</div>
+        <div class="dc-top">${c.lat != null ? '📍 ' : ''}<b>${esc(Scoring.nameById[c.districtId])}</b>
+          <span class="tiny">${App.fmtArea(Scoring.areaById[c.districtId])} km²</span>${prot ? ` <span class="tiny">🛡 ${esc((C.teams[prot] || {}).name || '')}</span>` : ''}</div>
+        ${chal(c, false)}
+        ${hard ? chal(hard, true) : ''}
         <div class="flop-acts">
-          ${canComplete ? `<button class="dc-btn" onclick="App.completeChallenge('${c.id}')">Complete → claim</button>` : ''}
-          ${isOwner && !prot ? `<button class="dc-btn alt" onclick="App.swapFlopCard('${c.id}')">🔄 Swap</button>` : ''}
+          ${isOwner && !prot ? `<button class="dc-btn alt" onclick="App.swapFlopCard('${c.id}')">🔄 Swap card</button>` : ''}
           ${canProtect ? `<button class="dc-btn alt" onclick="App.protectFlopCard('${c.id}')">🛡 Protect</button>` : ''}
         </div></div>`;
     }).join('');
