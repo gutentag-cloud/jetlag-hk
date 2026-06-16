@@ -9,7 +9,11 @@ const Team = (function () {
   let C = {};
 
   function init() {}
-  function tick(ctx) { C = ctx || C; const el = document.getElementById('incomeCountdown'); if (el) el.textContent = incomeText(); }
+  function tick(ctx) {
+    C = ctx || C;
+    const el = document.getElementById('incomeCountdown'); if (el) el.textContent = incomeText();
+    const pn = document.getElementById('privNext'); if (pn) pn.textContent = privNextText();
+  }
 
   function incomeText() {
     const ni = App.nextIncome();
@@ -68,6 +72,8 @@ const Team = (function () {
         <button class="btn ${C.sharingLoc ? 'good' : 'ghost'} wide loc-toggle" onclick="App.toggleLocation()">${C.sharingLoc ? '📍 Sharing live location — tap to stop' : '📍 Share my live location'}</button>
       </div>
 
+      <div class="card"><div class="card-h">🂠 My Private Deck <span class="card-h-note" id="privCount"></span></div><div id="privBody"></div></div>
+
       <div class="card"><div class="card-h">🚇 Transport Calculator</div><div id="tcalc"></div></div>
 
       <div class="card"><div class="card-h">🛒 Shops</div>
@@ -93,7 +99,28 @@ const Team = (function () {
           : '<div class="empty">None yet. Complete a location challenge to claim a district.</div>'}</div></div>
       </div>`;
 
-    renderTransport(); renderShops(); renderSteal();
+    renderPrivate(); renderTransport(); renderShops(); renderSteal();
+  }
+
+  function privNextText() {
+    const np = App.nextPrivate();
+    if (!np) return '🂠 Private deck starts when the game (coin clock) starts.';
+    let s = Math.max(0, Math.floor(np.msLeft / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return '🂠 Next private card in ' + (h ? h + 'h ' + m + 'm' : m + ':' + String(sec).padStart(2, '0'));
+  }
+  function renderPrivate() {
+    const el = document.getElementById('privBody'); if (!el) return;
+    const cards = App.privateList(C.me);
+    document.getElementById('privCount').textContent = cards.length + ' card' + (cards.length === 1 ? '' : 's');
+    let html = `<div class="income-row" id="privNext">${privNextText()}</div>`;
+    if (!cards.length) { el.innerHTML = html + `<div class="empty">No private cards yet — they arrive on a timer (1 at start, +1 at 3h, then every 2h).</div>`; return; }
+    html += cards.map(c => `<div class="deck-card">
+      <div class="dc-top">${c.lat != null ? '📍 ' : ''}<b>${esc(c.name)}</b></div>
+      <div class="dc-sub">📌 ${esc(Scoring.nameById[c.districtId])} · ${App.fmtArea(Scoring.areaById[c.districtId])} km²</div>
+      <div class="dc-text">${esc(c.text || 'No challenge text yet.')}</div>
+      <button class="dc-btn" onclick="App.completeChallenge('${c.id}')">Complete → claim</button></div>`).join('');
+    el.innerHTML = html;
   }
 
   /* transport — per-minute stepper, or built-in MTR route+fare calculator */

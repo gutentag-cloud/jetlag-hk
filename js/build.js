@@ -178,13 +178,16 @@ const Build = (function () {
     const t = D.transport.map(m => `<tr><td>${esc(m.mode)}</td><td>${esc(m.desc)}</td></tr>`).join('');
     return `
       <h2>Rules Reference <span class="tiny">— District Claiming (Flop version)</span></h2>
-      <p class="sub">Starting budget <span class="kbd">${D.startingBudget}</span> coins · +<span class="kbd">${D.incomeAmount}</span> every <span class="kbd">${D.incomeIntervalMin} min</span>.</p>
+      <p class="sub">Game ${esc(D.gameStart || '08:00')}–${esc(D.gameEnd || '19:00')} · start <span class="kbd">${D.startingBudget}</span> coins · +<span class="kbd">${D.incomeAmount}</span> every <span class="kbd">${D.incomeIntervalMin} min</span>.</p>
 
       <div class="rules-sec"><h3>🏁 Win condition</h3>
         <div class="rcard"><b>Most districts by the end of the day wins.</b> Tiebreaker: total land area of the districts claimed. (The Leaderboard ranks by district count, then area.)</div></div>
 
       <div class="rules-sec"><h3>🃏 The Flop</h3>
-        <div class="rcard">Challenges are <b>normal</b> or <b style="color:#f5b021">hard 🟧</b> (2 normal + 1 hard per district). ${D.flopSize || 6} normal cards from ${D.flopSize || 6} different districts sit in <b>The Flop</b>. Race to complete one to claim that district; it then leaves the Flop permanently, the completing team may swap one more card, and others may protect a card. The 2 rare + 6 wildcard cards can also appear. <i>(The interactive Flop board is the next build — for now, complete any card from the deck or map.)</i></div></div>
+        <div class="rcard">Challenges are <b>normal</b> or <b style="color:#f5b021">hard 🟧</b> (2 normal + 1 hard per district). ${D.flopSize || 6} normal cards from ${D.flopSize || 6} different districts sit in <b>The Flop</b>. Race to complete one to claim that district; it then leaves the Flop permanently, the completing team may swap one more card, and others may protect a card. Hard challenges do not appear in The Flop. The 2 rare + 6 wildcard cards can also appear.</div></div>
+
+      <div class="rules-sec"><h3>🂠 Private deck</h3>
+        <div class="rcard">Each team also has its own <b>private deck</b> (only you see it) that gives random normal challenge cards. You get <b>1 at the start</b>, a <b>2nd after 3 hours</b>, then <b>+1 every 2 hours</b>. Complete one to claim the district, just like the Flop. (See My Team.)</div></div>
 
       <div class="rules-sec"><h3>⚔️ Stealing & locking</h3>
         <div class="rcard">To <b>steal</b> an opponent's district: own ≥1 district bordering it (<span style="color:#22c55e">land</span> or <span style="color:#22d3ee">sea</span>) <b>and</b> complete that district's <b style="color:#f5b021">hard challenge 🟧</b>. A stolen (or hard-claimed) district is <b>locked 🔒</b> — permanent, and can't be stolen. No coin cost.</div></div>
@@ -200,7 +203,10 @@ const Build = (function () {
         <div class="rcard">${esc(D.proofNote || '')}</div></div>
 
       <div class="rules-sec"><h3>⛈ Severe weather</h3>
-        <div class="rcard">${esc(D.weatherNote || '')}</div></div>`;
+        <div class="rcard">${esc(D.weatherNote || '')}</div></div>
+
+      <div class="rules-sec"><h3>🤝 Fair play</h3>
+        <div class="rcard">Challenges can only be started & done at their location unless stated; most can be reattempted. Please don't cheat or lie — keep the integrity and make it more enjoyable for everyone. Have fun! :)</div></div>`;
   }
 
   /* ---------- data / export ---------- */

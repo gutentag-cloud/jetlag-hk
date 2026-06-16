@@ -49,8 +49,7 @@
  ],
  "hki-southwest": [
   "hki-southeast",
-  "hki-west",
-  "lantau-south"
+  "hki-west"
  ],
  "hki-west": [
   "hki-central",
@@ -186,7 +185,6 @@
   "tuen-mun"
  ],
  "lantau-south": [
-  "hki-southwest",
   "kwai-tsing",
   "lantau-north",
   "sham-tseng-tai-tong"

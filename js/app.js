@@ -79,6 +79,7 @@ const App = (function () {
       challengeDone: raw.challengeDone || {}, log: raw.log || {}, borders, graph, challenges,
       locations: raw.locations || {}, meta: raw.meta || {},
       flop: raw.flop || {}, flopProtect: raw.flopProtect || {}, flopRound: raw.flopRound || null,
+      privateDeck: raw.privateDeck || {}, privateEpoch: raw.privateEpoch || {},
       ownedByTeam, scores, showMarkers: true, ui,
       me: currentTeam(), role: Auth.role(), isHost: Auth.isHost(),
       sharingLoc: isSharingLoc(), showBordersFor: ui.showBordersFor
@@ -231,6 +232,12 @@ const App = (function () {
       Sync.write('flopRound', { by: byTeam, at: now() });
       Sync.remove('flopProtect');
     }
+    // the claimed district's cards disappear from every private deck (no auto-replace —
+    // the private deck grows on a fixed schedule, not a fixed size)
+    const pdAll = raw.privateDeck || {};
+    Object.keys(pdAll).forEach(tid => {
+      ctx.challenges.forEach(c => { if (c.districtId === did && (pdAll[tid] || {})[c.id]) Sync.remove('privateDeck/' + tid + '/' + c.id); });
+    });
   }
   function protectFlopCard(cardId) {
     const me = currentTeam(); const round = raw.flopRound;
@@ -253,6 +260,53 @@ const App = (function () {
     toast('Swapped a card.');
   }
   function endFlopRound() { Sync.remove('flopRound'); Sync.remove('flopProtect'); }
+
+  /* ============ PRIVATE DECK (per team) ============
+     1 card at game start, a 2nd at +3h, then +1 every 2h. The team's OWN
+     device draws its private cards (kept private + survives reloads via epoch). */
+  function privateList(teamId) {
+    const pd = (raw.privateDeck || {})[teamId] || {};
+    return Object.keys(pd).map(id => ctx.challenges.find(c => c.id === id)).filter(Boolean)
+      .sort((a, b) => (pd[a.id] || 0) - (pd[b.id] || 0));
+  }
+  function privateDueCount() {
+    const start = (raw.meta || {}).incomeStartedAt; if (!start) return 0;
+    const E = (now() - start) / 60000; const pd = D.privateDeck;
+    if (E < pd.secondAtMin) return 1;
+    return 2 + Math.floor((E - pd.secondAtMin) / pd.thenEveryMin);
+  }
+  function nextPrivate() {
+    const start = (raw.meta || {}).incomeStartedAt; if (!start) return null;
+    const E = (now() - start) / 60000; const pd = D.privateDeck;
+    let nextAt;
+    if (E < pd.secondAtMin) nextAt = pd.secondAtMin;
+    else nextAt = pd.secondAtMin + (Math.floor((E - pd.secondAtMin) / pd.thenEveryMin) + 1) * pd.thenEveryMin;
+    return { msLeft: (start + nextAt * 60000) - now() };
+  }
+  function eligibleForPrivate() {
+    const claims = raw.claims || {};
+    const inFlop = new Set(Object.keys(raw.flop || {}));
+    const inPriv = new Set();
+    Object.values(raw.privateDeck || {}).forEach(pd => Object.keys(pd || {}).forEach(id => inPriv.add(id)));
+    return ctx.challenges.filter(c => c.type === 'normal' && c.districtId && (c.text || '').trim()
+      && !claims[c.districtId] && !inFlop.has(c.id) && !inPriv.has(c.id));
+  }
+  function drawPrivateCard(teamId) {
+    const pool = eligibleForPrivate(); if (!pool.length) return null;
+    const c = pool[Math.floor(Math.random() * pool.length)];
+    Sync.write('privateDeck/' + teamId + '/' + c.id, now());
+    return c;
+  }
+  function tickPrivate() {
+    const me = Auth.teamId(); if (!me) return;          // only your own device deals your private cards
+    if (!(raw.meta || {}).incomeStartedAt) return;
+    const due = privateDueCount(); const ep = (raw.privateEpoch || {})[me] || 0;
+    if (due > ep) {
+      for (let i = 0; i < due - ep; i++) drawPrivateCard(me);
+      Sync.write('privateEpoch/' + me, due);
+      log((raw.teams[me] || {}).name + ' drew a private challenge card.');
+    }
+  }
 
   /* coins (decimals allowed) */
   function setCoins(teamId, val) { if (requireActAs(teamId)) Sync.write('coins/' + teamId, round2(val)); }
@@ -522,7 +576,7 @@ const App = (function () {
     GameMap.init(); Game.init(); Team.init(); Build.init(); wireChrome();
     Auth.init(() => render());
     Sync.init({ onState, onStatus: updateConn });
-    setInterval(() => { tickIncome(); if (ui.tab === 'game') Game.tick(ctx); if (ui.tab === 'team') Team.tick(ctx); }, 1000);
+    setInterval(() => { tickIncome(); tickPrivate(); if (ui.tab === 'game') Game.tick(ctx); if (ui.tab === 'team') Team.tick(ctx); }, 1000);
     if (isSharingLoc()) setTimeout(startLocation, 1500);   // resume location sharing
   }
   function updateConn(s) {
@@ -616,6 +670,7 @@ const App = (function () {
     createTeam, addTeamHost, renameTeam, setTeamColor, removeTeam, setHostActing,
     claimDistrict, unclaim, lockDistrict, completeChallenge,
     dealFlop, flopList, eligibleForFlop, swapFlopCard, protectFlopCard, endFlopRound,
+    privateList, nextPrivate,
     setCoins, adjustCoins, canAfford, transportCost, chargeTransport,
     nextIncome, resetIncomeClock,
     toggleLocation, isSharingLoc, startLocation, stopLocation,
