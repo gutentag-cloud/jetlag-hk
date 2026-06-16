@@ -9,24 +9,23 @@
  "kowloon-southeast": [
   "hki-central",
   "hki-west",
-  "kowloon-bay",
   "kowloon-northeast",
   "kowloon-northwest",
   "kowloon-southwest",
   "kwun-tong"
  ],
  "kowloon-northeast": [
-  "kowloon-bay",
   "kowloon-northwest",
   "kowloon-peak",
   "kowloon-southeast",
   "kowloon-southwest",
+  "kwun-tong",
   "sha-tin"
  ],
  "kwun-tong": [
   "hki-central",
   "hki-east",
-  "kowloon-bay",
+  "kowloon-northeast",
   "kowloon-peak",
   "kowloon-southeast",
   "tseung-kwan-o"
@@ -39,7 +38,6 @@
   "sha-tin"
  ],
  "kowloon-peak": [
-  "kowloon-bay",
   "kowloon-northeast",
   "kwun-tong",
   "ma-on-shan",
@@ -49,7 +47,8 @@
  ],
  "hki-southwest": [
   "hki-southeast",
-  "hki-west"
+  "hki-west",
+  "lantau-south"
  ],
  "hki-west": [
   "hki-central",
@@ -64,12 +63,6 @@
   "hki-west",
   "kowloon-southeast",
   "kowloon-southwest",
-  "kwun-tong"
- ],
- "kowloon-bay": [
-  "kowloon-northeast",
-  "kowloon-peak",
-  "kowloon-southeast",
   "kwun-tong"
  ],
  "sha-tin": [
@@ -96,7 +89,7 @@
  "sap-sze-heung-et-al": [
   "ma-on-shan",
   "sai-kung",
-  "sha-tau-kok-et-al",
+  "sheung-shui-et-al",
   "tai-po"
  ],
  "ma-liu-shui": [
@@ -160,24 +153,12 @@
   "tuen-mun",
   "yuen-long-et-al"
  ],
- "sheung-shui-et-al": [
-  "far-north",
-  "sha-tau-kok-et-al",
-  "tai-po",
-  "yuen-long-et-al"
- ],
  "tai-po": [
   "ma-liu-shui",
   "sap-sze-heung-et-al",
-  "sha-tau-kok-et-al",
   "sheung-shui-et-al",
   "tsuen-wan",
   "yuen-long-et-al"
- ],
- "sha-tau-kok-et-al": [
-  "sap-sze-heung-et-al",
-  "sheung-shui-et-al",
-  "tai-po"
  ],
  "lantau-north": [
   "lantau-south",
@@ -185,6 +166,7 @@
   "tuen-mun"
  ],
  "lantau-south": [
+  "hki-southwest",
   "kwai-tsing",
   "lantau-north",
   "sham-tseng-tai-tong"
@@ -192,5 +174,11 @@
  "tseung-kwan-o": [
   "kowloon-peak",
   "kwun-tong"
+ ],
+ "sheung-shui-et-al": [
+  "far-north",
+  "sap-sze-heung-et-al",
+  "tai-po",
+  "yuen-long-et-al"
  ]
 }

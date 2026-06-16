@@ -184,7 +184,7 @@ const Build = (function () {
         <div class="rcard"><b>Most districts by the end of the day wins.</b> Tiebreaker: total land area of the districts claimed. (The Leaderboard ranks by district count, then area.)</div></div>
 
       <div class="rules-sec"><h3>🃏 The Flop</h3>
-        <div class="rcard">Challenges are <b>normal</b> or <b style="color:#f5b021">hard 🟧</b> (2 normal + 1 hard per district). ${D.flopSize || 6} normal cards from ${D.flopSize || 6} different districts sit in <b>The Flop</b>. Race to complete one to claim that district; it then leaves the Flop permanently, the completing team may swap one more card, and others may protect a card. Hard challenges do not appear in The Flop. The 2 rare + 6 wildcard cards can also appear.</div></div>
+        <div class="rcard">Challenges are <b>normal</b> or <b style="color:#f5b021">hard 🟧</b> (2 normal + 1 hard per district). ${D.flopSize || 6} normal cards from ${D.flopSize || 6} different districts sit in <b>The Flop</b>. Race to complete one to claim that district; it then leaves the Flop and a new card replaces it. When a team gains control of a district via a <b style="color:#f5b021">HARD challenge</b> (lock or steal), they may then swap one more Flop card for a fresh one — other teams may protect a card first. Hard challenges do not appear in The Flop. The 2 rare + 6 wildcard cards can also appear.</div></div>
 
       <div class="rules-sec"><h3>🂠 Private deck</h3>
         <div class="rcard">Each team also has its own <b>private deck</b> (only you see it) that gives random normal challenge cards. You get <b>1 at the start</b>, a <b>2nd after 3 hours</b>, then <b>+1 every 2 hours</b>. Complete one to claim the district, just like the Flop. (See My Team.)</div></div>
@@ -203,7 +203,8 @@ const Build = (function () {
         <div class="rcard">${esc(D.proofNote || '')}</div></div>
 
       <div class="rules-sec"><h3>⛈ Severe weather</h3>
-        <div class="rcard">${esc(D.weatherNote || '')}</div></div>
+        <div class="rcard">${esc(D.weatherNote || '')}</div>
+        ${D.weatherIndoorNote ? `<div class="rcard">${esc(D.weatherIndoorNote)}</div>` : ''}</div>
 
       <div class="rules-sec"><h3>🤝 Fair play</h3>
         <div class="rcard">Challenges can only be started & done at their location unless stated; most can be reattempted. Please don't cheat or lie — keep the integrity and make it more enjoyable for everyone. Have fun! :)</div></div>`;

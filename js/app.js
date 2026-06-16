@@ -139,7 +139,7 @@ const App = (function () {
     const tn = (raw.teams[teamId] || {}).name || 'Team';
     log(tn + ' claimed ' + Scoring.nameById[did] + (locked ? ' 🔒 (hard challenge)' : '') + '.');
     toast(tn + ' claimed ' + Scoring.nameById[did] + (locked ? ' 🔒' : ''));
-    maintainFlopAfterClaim(did, teamId);
+    maintainFlopAfterClaim(did, teamId, !!locked);
   }
   function unclaim(did) {
     const c = (raw.claims || {})[did]; if (!c) return;
@@ -154,6 +154,7 @@ const App = (function () {
     if (challengeId) Sync.write('challengeDone/' + challengeId, c.team);
     log((raw.teams[c.team] || {}).name + ' locked ' + Scoring.nameById[did] + ' 🔒 (hard challenge).');
     toast('Locked ' + Scoring.nameById[did] + ' — permanent.');
+    maintainFlopAfterClaim(did, c.team, true);           // hard-challenge control → swap round
   }
   // unified completion of a normal/hard challenge tied to a district
   function completeChallenge(challengeId) {
@@ -179,7 +180,7 @@ const App = (function () {
       Sync.write('challengeDone/' + challengeId, me);
       log((raw.teams[me] || {}).name + ' STOLE ' + Scoring.nameById[did] + ' 🔒 (hard challenge).');
       toast('Stolen: ' + Scoring.nameById[did] + ' 🔒');
-      maintainFlopAfterClaim(did, me);
+      maintainFlopAfterClaim(did, me, true);
     }
     closePopups();
   }
@@ -234,14 +235,12 @@ const App = (function () {
     return c;
   }
   // when a district becomes claimed, drop its Flop card & draw a replacement; open a round
-  function maintainFlopAfterClaim(did, byTeam) {
+  function maintainFlopAfterClaim(did, byTeam, viaHard) {
     const flop = raw.flop || {}; let removed = false;
     ctx.challenges.forEach(c => { if (c.districtId === did && flop[c.id]) { Sync.remove('flop/' + c.id); removed = true; } });
-    if (removed) {
-      drawFlopCard(did);
-      Sync.write('flopRound', { by: byTeam, at: now() });
-      Sync.remove('flopProtect');
-    }
+    if (removed) drawFlopCard(did);                       // keep the Flop at 6
+    // swap/protect round only when control is gained via a HARD challenge (rule 12)
+    if (viaHard) { Sync.write('flopRound', { by: byTeam, at: now() }); Sync.remove('flopProtect'); }
     // the claimed district's cards disappear from every private deck (no auto-replace —
     // the private deck grows on a fixed schedule, not a fixed size)
     const pdAll = raw.privateDeck || {};
