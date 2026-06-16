@@ -92,7 +92,11 @@ const Game = (function () {
     document.getElementById('deckCount').textContent = flop.length + ' / ' + (D.flopSize || 6);
 
     let ctrl = '';
-    if (C.isHost) ctrl += `<button class="dc-btn" style="background:var(--accent2);margin-bottom:6px" onclick="App.dealFlop()">${flop.length ? '🔄 Reseed The Flop' : '🎲 Deal The Flop'}</button>`;
+    if (C.isHost) {
+      const full = flop.length >= (D.flopSize || 6);
+      ctrl += `<button class="dc-btn" style="background:var(--accent2)" ${full ? 'disabled' : ''} onclick="App.dealFlop()">${flop.length ? (full ? '✓ Flop full' : '➕ Refill empty slots') : '🎲 Deal The Flop'}</button>`;
+      if (flop.length) ctrl += `<div style="margin:4px 0 6px"><button class="link-btn" onclick="if(confirm('Discard all current cards and deal a fresh Flop?'))App.redealFlop()">↻ re-deal all from scratch</button></div>`;
+    }
     if (round) {
       const byName = (C.teams[round.by] || {}).name || 'A team';
       ctrl += round.by === me

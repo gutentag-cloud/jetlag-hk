@@ -198,23 +198,33 @@ const App = (function () {
     const inFlop = new Set(Object.keys(raw.flop || {}));
     const flopD = new Set(flopList().map(c => c.districtId));
     const claims = raw.claims || {};
+    const done = raw.challengeDone || {};                 // completed challenges never reappear
     return ctx.challenges.filter(c =>
       c.type === 'normal' && c.districtId && (c.text || '').trim() &&
-      !inFlop.has(c.id) && !claims[c.districtId] && !flopD.has(c.districtId));
+      !done[c.id] && !inFlop.has(c.id) && !claims[c.districtId] && !flopD.has(c.districtId));
   }
+  // TOP UP: keep existing cards, only fill empty slots (up to flopSize) from the pool
   function dealFlop() {
     if (!requireHost()) return;
     const size = D.flopSize || 6;
-    const chosen = []; const usedD = new Set();
+    const map = Object.assign({}, raw.flop || {});
+    if (Object.keys(map).length >= size) { toast('The Flop is already full (' + size + '/' + size + ').'); return; }
+    const usedD = new Set(flopList().map(c => c.districtId));
+    let added = 0; const t = now();
     for (const c of shuffle(eligibleForFlop())) {
-      if (chosen.length >= size) break;
-      if (!usedD.has(c.districtId)) { chosen.push(c); usedD.add(c.districtId); }
+      if (Object.keys(map).length >= size) break;
+      if (!usedD.has(c.districtId)) { map[c.id] = t + (added++); usedD.add(c.districtId); }
     }
-    const map = {}; const t = now();
-    chosen.forEach((c, i) => map[c.id] = t + i);
-    Sync.write('flop', map); Sync.remove('flopProtect'); Sync.remove('flopRound');
-    log('The Flop was dealt (' + chosen.length + ' cards).');
-    toast('Dealt The Flop: ' + chosen.length + ' cards.');
+    Sync.write('flop', map);
+    log('The Flop was filled (+' + added + ' card' + (added === 1 ? '' : 's') + ').');
+    toast(added ? ('Filled The Flop (+' + added + ').') : 'No eligible districts left to add.');
+  }
+  // full reset: discard everything and deal a fresh set
+  function redealFlop() {
+    if (!requireHost()) return;
+    Sync.remove('flop'); Sync.remove('flopProtect'); Sync.remove('flopRound');
+    setTimeout(dealFlop, 50);
+    log('The Flop was re-dealt from scratch.');
   }
   function drawFlopCard(excludeDistrict) {
     const pool = eligibleForFlop().filter(c => c.districtId !== excludeDistrict);
@@ -288,8 +298,9 @@ const App = (function () {
     const inFlop = new Set(Object.keys(raw.flop || {}));
     const inPriv = new Set();
     Object.values(raw.privateDeck || {}).forEach(pd => Object.keys(pd || {}).forEach(id => inPriv.add(id)));
+    const done = raw.challengeDone || {};
     return ctx.challenges.filter(c => c.type === 'normal' && c.districtId && (c.text || '').trim()
-      && !claims[c.districtId] && !inFlop.has(c.id) && !inPriv.has(c.id));
+      && !done[c.id] && !claims[c.districtId] && !inFlop.has(c.id) && !inPriv.has(c.id));
   }
   function drawPrivateCard(teamId) {
     const pool = eligibleForPrivate(); if (!pool.length) return null;
@@ -669,7 +680,7 @@ const App = (function () {
     currentTeam, switchTab, openLoginModal, clearBorders, openDistrictInfo,
     createTeam, addTeamHost, renameTeam, setTeamColor, removeTeam, setHostActing,
     claimDistrict, unclaim, lockDistrict, completeChallenge,
-    dealFlop, flopList, eligibleForFlop, swapFlopCard, protectFlopCard, endFlopRound,
+    dealFlop, redealFlop, flopList, eligibleForFlop, swapFlopCard, protectFlopCard, endFlopRound,
     privateList, nextPrivate,
     setCoins, adjustCoins, canAfford, transportCost, chargeTransport,
     nextIncome, resetIncomeClock,
