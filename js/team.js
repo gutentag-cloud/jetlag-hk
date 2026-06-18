@@ -58,13 +58,18 @@ const Team = (function () {
           <input class="team-name" value="${esc(t.name)}" onchange="App.renameTeam('${me}',this.value)" />
           <input type="color" class="team-color" value="${esc(t.color)}" onchange="App.setTeamColor('${me}',this.value)" />
         </div>
-        <div class="coin-bar">
-          <div class="coin-big ${coins < 0 ? 'neg' : ''}">🪙 ${App.fmtCoins(coins)}</div>
-          <div class="coin-ctrl">
-            <button onclick="App.adjustCoins('${me}',-50,'manual')">−50</button>
-            <input type="number" step="any" value="${App.fmtCoins(coins)}" onchange="App.setCoins('${me}',this.value)" />
-            <button onclick="App.adjustCoins('${me}',50,'manual')">+50</button>
-          </div>
+        <div class="coin-big ${coins < 0 ? 'neg' : ''}">🪙 ${App.fmtCoins(coins)}</div>
+        <div class="coin-quick">
+          <button onclick="App.adjustCoins('${me}',-100,'manual')">−100</button>
+          <button onclick="App.adjustCoins('${me}',-50,'manual')">−50</button>
+          <button onclick="App.adjustCoins('${me}',50,'manual')">+50</button>
+          <button onclick="App.adjustCoins('${me}',100,'manual')">+100</button>
+        </div>
+        <div class="coin-custom">
+          <input id="coinAmt" type="number" step="any" inputmode="decimal" placeholder="amount" />
+          <button class="btn good xs" onclick="Team.coinAdd('${me}',1)">＋ Add</button>
+          <button class="btn bad xs" onclick="Team.coinAdd('${me}',-1)">－ Sub</button>
+          <button class="btn ghost xs" onclick="Team.coinSet('${me}')">Set</button>
         </div>
         <div class="income-row"><span id="incomeCountdown">${incomeText()}</span>
           ${C.isHost ? `<button class="link-btn" onclick="App.resetIncomeClock()">reset clock</button>` : ''}</div>
@@ -158,6 +163,16 @@ const Team = (function () {
           <div class="tiny" style="margin-top:5px">${r.fareUnits} fare units × 3 · ⏱ ${r.timeMins} min · ${r.stops} stops</div>
         </div>` : `<div class="tiny" style="margin:6px 0">Pick two stations to compute the MTR fare.</div>`}`;
   }
+  function coinAdd(me, sign) {
+    const el = document.getElementById('coinAmt'); const v = Math.abs(Number(el && el.value) || 0);
+    if (!v) { App.toast('Enter an amount first.'); return; }
+    App.adjustCoins(me, sign * v, 'manual'); if (el) el.value = '';
+  }
+  function coinSet(me) {
+    const el = document.getElementById('coinAmt');
+    if (!el || el.value === '') { App.toast('Enter an amount to set the balance to.'); return; }
+    App.setCoins(me, Number(el.value) || 0); el.value = '';
+  }
   function onMode(v) { App.ui.transport.mode = Number(v); App.render(); }
   function onField(f, v) { App.ui.transport[f] = v; App.render(); }
   function bump(d) { const tu = App.ui.transport; tu.minutes = Math.max(0, App.round2((Number(tu.minutes) || 0) + d)); App.render(); }
@@ -212,5 +227,5 @@ const Team = (function () {
     el.innerHTML = html;
   }
 
-  return { init, render, tick, onMode, onField, bump, onMtr, onMtrMode, setShop, onPowerN };
+  return { init, render, tick, coinAdd, coinSet, onMode, onField, bump, onMtr, onMtrMode, setShop, onPowerN };
 })();

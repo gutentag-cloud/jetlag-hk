@@ -139,7 +139,21 @@ const Sync = (function () {
     if (online && ref) { ref.set(null); }
     else { local = {}; saveLocal(room, local); onStateCb(local); }
   }
+  // atomic relative change — avoids the read-modify-write race when several
+  // devices (or rapid taps) adjust the same value concurrently.
+  function incr(path, delta) {
+    delta = Math.round((Number(delta) || 0) * 100) / 100;
+    if (online && ref && window.firebase && firebase.database.ServerValue) {
+      ref.child(path).set(firebase.database.ServerValue.increment(delta));
+    } else {
+      let o = local; const parts = path.split('/').filter(Boolean);
+      for (let i = 0; i < parts.length - 1; i++) o = (o && o[parts[i]]) || {};
+      const cur = Number((o || {})[parts[parts.length - 1]]) || 0;
+      deepSet(local, path, Math.round((cur + delta) * 100) / 100);
+      saveLocal(room, local); onStateCb(local);
+    }
+  }
 
-  return { init, connect, disconnect, changeRoom, write, update, remove, push, resetGame,
+  return { init, connect, disconnect, changeRoom, write, update, remove, push, incr, resetGame,
            getRoom: () => room, isOnline: () => online };
 })();

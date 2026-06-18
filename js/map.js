@@ -106,7 +106,7 @@ const GameMap = (function () {
       const age = ageS < 60 ? ageS + 's ago' : Math.round(ageS / 60) + 'm ago';
       const ini = esc((t.name || '?').trim().slice(0, 2).toUpperCase());
       const m = L.marker([l.lat, l.lon], { icon: L.divIcon({ className: 'team-loc-wrap',
-        html: `<div class="team-loc" style="background:${col}">${ini}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: 1000 });
+        html: `<div class="team-loc" data-i="${ini}" style="background:${col}"></div>`, iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: 1000 });
       m.bindPopup(`<div class="popup-title">📍 ${esc(t.name || 'Team')}</div><div class="popup-meta">${age} · ±${l.acc || '?'}m</div>`);
       m.addTo(locationLayer);
     });

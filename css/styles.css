@@ -371,3 +371,11 @@ b{color:#fff}
 .fc-name{font-weight:600;font-size:13px;margin-bottom:3px}
 .flop-chal.hard .fc-name{color:var(--hard)}
 .flop-chal .dc-btn{margin-top:6px}
+
+/* coin controls (My Team) */
+.coin-quick{display:flex;gap:6px;margin:8px 0}
+.coin-quick button{flex:1;background:var(--bg3);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px;font-weight:600;font-size:13px}
+.coin-quick button:active{background:var(--accent);color:#fff}
+.coin-custom{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.coin-custom input{flex:1 1 70px;min-width:64px;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px;text-align:right;font-variant-numeric:tabular-nums}
+.coin-custom .btn.xs{flex:0 0 auto;padding:8px 10px}

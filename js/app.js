@@ -322,8 +322,9 @@ const App = (function () {
   function setCoins(teamId, val) { if (requireActAs(teamId)) Sync.write('coins/' + teamId, round2(val)); }
   function adjustCoins(teamId, delta, reason, silent) {
     if (!silent && !requireActAs(teamId)) return;
-    const cur = (raw.coins || {})[teamId] || 0;
-    Sync.write('coins/' + teamId, round2(cur + delta));
+    delta = round2(delta);
+    if (!delta) return;
+    Sync.incr('coins/' + teamId, delta);                 // atomic — no lost updates on rapid/concurrent changes
     if (reason) log((raw.teams[teamId] || {}).name + ': ' + (delta >= 0 ? '+' : '') + fmtCoins(delta) + ' coins — ' + reason + '.');
   }
   function canAfford(teamId, cost) { return ((raw.coins || {})[teamId] || 0) >= cost; }
@@ -345,7 +346,7 @@ const App = (function () {
       const ep = (raw.teams[tid] || {}).incomeEpoch || 0;
       if (due > ep) {
         const add = (due - ep) * D.incomeAmount;
-        Sync.write('coins/' + tid, round2(((raw.coins || {})[tid] || 0) + add));
+        Sync.incr('coins/' + tid, add);                  // atomic income credit
         Sync.write('teams/' + tid + '/incomeEpoch', due);
         log((raw.teams[tid] || {}).name + ': +' + add + ' coins (income).');
       }
