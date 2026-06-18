@@ -15,7 +15,7 @@ const App = (function () {
   let geoWatch = null;           // geolocation watch id
 
   const ui = {
-    tab: 'game', buildView: 'challenges', mapMode: 'claim', shop: 'powerup',
+    tab: 'game', buildView: 'challenges', mapMode: 'info', shop: 'powerup',
     hostActing: null, showBordersFor: null, deckDistrict: '', deckSearch: '',
     transport: { mode: 0, minutes: 10, mtr: 10, mtrFrom: '', mtrTo: '', mtrMode: 'cheapest' }, powerN: {}, search: '', filterDistrict: '', stealTarget: null
   };
@@ -515,19 +515,16 @@ const App = (function () {
   function setMapMode(m) {
     ui.mapMode = m;
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
-    const hint = { claim: 'Tap a district to claim it for your team. Tap your own to release.',
+    const hint = {
       roadblock: pending ? 'Tap the map to drop your roadblock.' : 'Buy a roadblock in My Team → Shops first.',
-      info: 'Tap a district to see its borders (🟢 land · 🩵 sea) and challenges.' };
+      info: 'Tap a district for its challenges & borders (🟢 land · 🩵 sea). Claim by completing a challenge.' };
     const el = document.getElementById('mapHint'); if (el) el.textContent = hint[m] || '';
   }
   function handleDistrictTap(id, latlng) {
     if (ui.mapMode === 'roadblock') { if (pending) placePending(latlng); return; }
-    if (ui.mapMode === 'info') { openDistrictInfo(id); return; }
-    const c = (raw.claims || {})[id];
-    const me = currentTeam();
-    if (c && c.team === me) { unclaim(id); return; }
-    if (c && c.team !== me) { openDistrictInfo(id); return; }
-    claimDistrict(id, me, null);
+    // tapping a district never claims it directly — open its challenges/borders.
+    // Claiming happens only by completing a challenge (Flop / private deck / popup).
+    openDistrictInfo(id);
   }
   function handleMapTap(latlng) { if (ui.mapMode === 'roadblock' && pending) placePending(latlng); }
 
